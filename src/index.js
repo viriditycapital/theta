@@ -10,13 +10,28 @@ const YF = require('yahoo-finance');
  * Builds the website and starts up the app
  */
 async function init () {
+  // Layout
+  let left_side = document.createElement('div');
+  let right_side = document.createElement('div');
+
   let title    = document.createElement('div');
 
   // Main output
   let terminal = document.createElement('div');
 
-  document.body.appendChild(title);
-  document.body.appendChild(terminal);
+  // Chart
+  let chart = document.createElement('div');
+
+  left_side.classList.add('left_side');
+  right_side.classList.add('right_side');
+  left_side.appendChild(title);
+  left_side.appendChild(terminal);
+  right_side.appendChild(chart);
+
+  document.body.appendChild(left_side);
+  document.body.appendChild(right_side);
+
+  chart.innerHTML = 'chart location';
 
   // Stonk we are analyzing
   let STONK_TICKER = 'BYND';

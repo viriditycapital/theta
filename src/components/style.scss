@@ -3,7 +3,19 @@ body {
   margin: 0;
 
   display: flex;
+  flex-direction: row;
+}
+
+.left_side {
+  width: 50%;
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
+}
+
+.right_side {
+  width: 50%;
+  display: flex;
+  justify-content: center;
 }
