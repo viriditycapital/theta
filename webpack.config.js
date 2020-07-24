@@ -21,6 +21,11 @@ module.exports = {
     filename: 'bundle.js',
     path: path.resolve(__dirname, 'build'),
   },
+  node: {
+    fs: 'empty',
+    net: 'empty',
+    tls: 'empty'
+  },
   module: {
     rules: [
       {
