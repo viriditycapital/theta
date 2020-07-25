@@ -2,8 +2,9 @@
  * Main entrypoint of app
  */
 
-import './components/style.scss';
+import './styles/index.scss';
 import { PROXY_URL } from './constants.js';
+import { vol_AVG } from './analysis/vol.js';
 const YF = require('yahoo-finance');
 
 /**
@@ -15,6 +16,9 @@ async function init () {
   let right_side = document.createElement('div');
 
   let title    = document.createElement('div');
+  let right_title    = document.createElement('div');
+  right_side.innerHTML = '<h1>Analysis</h1>';
+  right_title.classList.add('title');
 
   // Main output
   let terminal = document.createElement('div');
@@ -26,13 +30,14 @@ async function init () {
   right_side.classList.add('right_side');
   left_side.appendChild(title);
   left_side.appendChild(terminal);
+  right_side.appendChild(right_title)
   right_side.appendChild(chart);
 
   document.body.appendChild(left_side);
   document.body.appendChild(right_side);
 
   // Stonk we are analyzing
-  let STONK_TICKER = 'BYND';
+  let STONK_TICKER = 'CSCO';
 
   let curr_price = await YF.quote({
     symbol: STONK_TICKER
@@ -46,23 +51,37 @@ async function init () {
   /** Historical quotes */
   let quotes = await YF.historical({
     symbol: STONK_TICKER,
-    from: '2020-01-01',
-    to: '2020-06-30',
+    from: '2019-07-25',
+    to: '2020-07-25',
     period: 'd'
   });
 
+  console.log(quotes);
+
+  let prices = quotes.map((e) => e.close);
+  let output_vol = {
+    '2w' : vol_AVG(prices.slice(0, 10), 3),
+    '1m' : vol_AVG(prices.slice(0, 20), 3),
+    '3m' : vol_AVG(prices.slice(0, 60), 10),
+    '6m' : vol_AVG(prices.slice(0, 120), 15),
+    '1y' : vol_AVG(prices, 20)
+  }
+
   let output_chart = '';
-  for (let i = 0; i < quotes.length; i++) {
+  for (const [key, value] of Object.entries(output_vol)) {
     output_chart +=
     `<tr>
       <th>
-      ${(new Date(quotes[i]['date'])).toDateString()}
+      ${key}
       </th>
       <th>
-      ${Number(quotes[i]['open']).toFixed(2)}
+      ${value.vol_sa}
       </th>
       <th>
-      ${Number(quotes[i]['close']).toFixed(2)}
+      ${value.vol_ma}
+      </th>
+      <th>
+      ${value.vol_ema}
       </th>
     </tr>
     `;
@@ -111,9 +130,10 @@ async function init () {
   `
   <table style="width:100%">
   <tr>
-    <th>Date</th>
-    <th>Open</th>
-    <th>Close</th>
+    <th>Time period</th>
+    <th>SA</th>
+    <th>MA</th>
+    <th>EWMA</th>
   </tr>
   ${output_chart}
   </table>
