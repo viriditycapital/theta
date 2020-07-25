@@ -30,14 +30,14 @@ async function init () {
   right_side.classList.add('right_side');
   left_side.appendChild(title);
   left_side.appendChild(terminal);
-  right_side.appendChild(right_title)
+  right_side.appendChild(right_title);
   right_side.appendChild(chart);
 
   document.body.appendChild(left_side);
   document.body.appendChild(right_side);
 
   // Stonk we are analyzing
-  let STONK_TICKER = 'CSCO';
+  let STONK_TICKER = 'TSLA';
 
   let curr_price = await YF.quote({
     symbol: STONK_TICKER
@@ -65,7 +65,7 @@ async function init () {
     '3m' : vol_AVG(prices.slice(0, 60), 10),
     '6m' : vol_AVG(prices.slice(0, 120), 15),
     '1y' : vol_AVG(prices, 20)
-  }
+  };
 
   let output_chart = '';
   for (const [key, value] of Object.entries(output_vol)) {
