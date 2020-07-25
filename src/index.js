@@ -56,20 +56,13 @@ async function init () {
   });
 
   let options = await $.ajax(
-    PROXY_URL + `finance.yahoo.com\/quote\/${STONK_TICKER}\/options\/`
+    PROXY_URL + `query1.finance.yahoo.com/v7/finance/options/${STONK_TICKER}`
   );
 
-  /** GET OPTIONS DATA */
-  // TODO: magic numbers af to parse this.
-  let options_data = JSON.parse(
-    options.slice(
-      options.search(/\"displayed/)+12,
-      options.search(/\"MobileHeaderStore/)-22
-    )
-  );
+  console.log(options);
 
-  let calls = options_data['calls']['contracts'];
-  let puts  = options_data['puts']['contracts'];
+  let calls = options['optionChain']['result'][0]['options'][0]['calls'];
+  let puts  = options['optionChain']['result'][0]['options'][0]['puts'];
 
   console.log(puts);
 
@@ -81,10 +74,10 @@ async function init () {
       ${puts[i]['contractSymbol']}
       </th>
       <th>
-      ${puts[i]['strike']['fmt']}
+      ${Number(puts[i]['strike']).toFixed(2)}
       </th>
       <th>
-      ${puts[i]['lastPrice']['fmt']}
+      ${Number(puts[i]['lastPrice']).toFixed(2)}
       </th>
     </tr>
     `;
