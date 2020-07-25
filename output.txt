@@ -1,0 +1,16 @@
+0:
+ask: {raw: 0.02, fmt: "0.02"}
+bid: {raw: 0, fmt: "0.00"}
+change: {raw: 0, fmt: "0.00"}
+contractSize: "REGULAR"
+contractSymbol: "BYND200724P00065000"
+currency: "USD"
+expiration: {raw: 1595548800, fmt: "2020-07-24", longFmt: "2020-07-24T00:00"}
+impliedVolatility: {raw: 4.375004531249999, fmt: "437.50%"}
+inTheMoney: false
+lastPrice: {raw: 0.01, fmt: "0.01"}
+lastTradeDate: {raw: 1595273804, fmt: "2020-07-20", longFmt: "2020-07-20T19:36"}
+openInterest: {raw: 50, fmt: "50", longFmt: "50"}
+percentChange: {raw: 0, fmt: "0.00%"}
+strike: {raw: 65, fmt: "65.00"}
+volume: {raw: 50, fmt: "50", longFmt: "50"}:w
