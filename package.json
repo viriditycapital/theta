@@ -4,9 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "npx webpack",
-    "start": "webpack-dev-server --open",
-    "deploy": "npm run build && gh-pages -d build"
+    "build": "webpack --config webpack.prod.js",
+    "start": "webpack-dev-server --open --config webpack.dev.js",
+    "deploy": "npm run build && gh-pages -d build",
+    "lint": "eslint --fix --ext .js ."
   },
   "repository": {
     "type": "git",
@@ -22,6 +23,8 @@
   "devDependencies": {
     "clean-webpack-plugin": "^3.0.0",
     "css-loader": "^3.6.0",
+    "eslint": "^7.5.0",
+    "eslint-loader": "^4.0.2",
     "file-loader": "^6.0.0",
     "gh-pages": "^3.1.0",
     "html-webpack-plugin": "^4.3.0",
@@ -31,7 +34,8 @@
     "style-loader": "^1.2.1",
     "webpack": "^4.43.0",
     "webpack-cli": "^3.3.12",
-    "webpack-dev-server": "^3.11.0"
+    "webpack-dev-server": "^3.11.0",
+    "webpack-merge": "^5.0.9"
   },
   "dependencies": {
     "yahoo-finance": "^0.3.6"
