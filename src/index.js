@@ -31,16 +31,12 @@ async function init () {
   document.body.appendChild(left_side);
   document.body.appendChild(right_side);
 
-  chart.innerHTML = 'chart location';
-
   // Stonk we are analyzing
   let STONK_TICKER = 'BYND';
 
   let curr_price = await YF.quote({
     symbol: STONK_TICKER
   });
-
-  console.log(curr_price);
 
   title.innerHTML = `<h1>${STONK_TICKER} ${curr_price['price']['regularMarketPrice']}</h1>`;
   title.classList.add('title');
@@ -55,11 +51,27 @@ async function init () {
     period: 'd'
   });
 
+  let output_chart = '';
+  for (let i = 0; i < quotes.length; i++) {
+    output_chart +=
+    `<tr>
+      <th>
+      ${(new Date(quotes[i]['date'])).toDateString()}
+      </th>
+      <th>
+      ${Number(quotes[i]['open']).toFixed(2)}
+      </th>
+      <th>
+      ${Number(quotes[i]['close']).toFixed(2)}
+      </th>
+    </tr>
+    `;
+  }
+
+  /** Options quotes **/
   let options = await $.ajax(
     PROXY_URL + `query1.finance.yahoo.com/v7/finance/options/${STONK_TICKER}`
   );
-
-  console.log(options);
 
   let calls = options['optionChain']['result'][0]['options'][0]['calls'];
   let puts  = options['optionChain']['result'][0]['options'][0]['puts'];
@@ -92,6 +104,18 @@ async function init () {
     <th>Last Price</th>
   </tr>
   ${output_puts}
+  </table>
+  `;
+
+  chart.innerHTML = 
+  `
+  <table style="width:100%">
+  <tr>
+    <th>Date</th>
+    <th>Open</th>
+    <th>Close</th>
+  </tr>
+  ${output_chart}
   </table>
   `;
 }
