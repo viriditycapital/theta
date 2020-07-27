@@ -37,7 +37,7 @@ async function init () {
   document.body.appendChild(right_side);
 
   // Stonk we are analyzing
-  let STONK_TICKER = 'TSLA';
+  let STONK_TICKER = 'BYND';
 
   let curr_price = await YF.quote({
     symbol: STONK_TICKER
@@ -49,23 +49,31 @@ async function init () {
   terminal.innerHTML = 'loading...';
 
   /** Historical quotes */
+  // TODO: For now, get the last 2 weeks since we are doing short-term options
+  
+  let curr_date = new Date();
+  let curr_date_string = `${curr_date.getFullYear()}-${curr_date.getMonth()+1}-${curr_date.getDate()}`;
+  curr_date.setFullYear(curr_date.getFullYear() - 1);
+  let past_date_string = `${curr_date.getFullYear()}-${curr_date.getMonth()+1}-${curr_date.getDate()}`;
+
   let quotes = await YF.historical({
     symbol: STONK_TICKER,
-    from: '2019-07-25',
-    to: '2020-07-25',
+    from: past_date_string,
+    to: curr_date_string,
     period: 'd'
   });
 
-  console.log(quotes);
-
+  // Concern: when we do things like this we lose the date that is associated
+  // with each price
   let prices = quotes.map((e) => e.close);
   let output_vol = {
-    '2w' : vol_AVG(prices.slice(0, 10), 3),
-    '1m' : vol_AVG(prices.slice(0, 20), 3),
-    '3m' : vol_AVG(prices.slice(0, 60), 10),
-    '6m' : vol_AVG(prices.slice(0, 120), 15),
-    '1y' : vol_AVG(prices, 20)
+    '2w' : vol_AVG(prices.slice(0, 10)),
+    '1m' : vol_AVG(prices.slice(0, 20)),
+    '3m' : vol_AVG(prices.slice(0, 60)),
+    '6m' : vol_AVG(prices.slice(0, 120)),
+    '1y' : vol_AVG(prices)
   };
+  console.log(output_vol);
 
   let output_chart = '';
   for (const [key, value] of Object.entries(output_vol)) {
@@ -75,13 +83,10 @@ async function init () {
       ${key}
       </th>
       <th>
-      ${value.vol_sa}
+      ${(100*Math.sqrt(value.vol_sa[value.vol_sa.length-1])).toFixed(3)}%
       </th>
       <th>
-      ${value.vol_ma}
-      </th>
-      <th>
-      ${value.vol_ema}
+      ${(100*Math.sqrt(value.vol_ewma[value.vol_ewma.length-1])).toFixed(3)}%
       </th>
     </tr>
     `;
@@ -94,8 +99,6 @@ async function init () {
 
   let calls = options['optionChain']['result'][0]['options'][0]['calls'];
   let puts  = options['optionChain']['result'][0]['options'][0]['puts'];
-
-  console.log(puts);
 
   let output_puts = '';
   for (let i = 0; i < puts.length; i++) {
@@ -132,7 +135,6 @@ async function init () {
   <tr>
     <th>Time period</th>
     <th>SA</th>
-    <th>MA</th>
     <th>EWMA</th>
   </tr>
   ${output_chart}

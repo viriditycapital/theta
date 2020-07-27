@@ -10,39 +10,51 @@
  * - MA: Moving Average
  * - EWMA: Exponentially Weighted Moving Average
  */
-
-import { STD, MA, EWMA } from './general.js';
+import { LAMBDA_EWMA } from './CONST_ANALYSIS.js';
 
 /**
- * Calculates the variance based on simple avg, MA, EMA
+ * Calculates the variance based on simple avg, EWMA
  * 
  * @param { float[] } data Price data
  * @param { int } window_size 
  * 
- * @returns Object containing sa, ma, ema volatilities
+ * @returns Object containing sa, ewma volatilities
  */
-export function vol_AVG (data, window_size) {
+export function vol_AVG (data, lambda=LAMBDA_EWMA) {
   let N = data.length;
-  let avg = data.reduce((a, b) => a + b, 0) / N;
+
+  // Calculate the returns 
+  let returns = [];
+  for (let i = 1; i < data.length; i++) {
+    returns.push(
+      Math.pow(
+        (data[i] - data[i-1]) / data[i-1],
+        2
+      )
+    );
+  }
 
   // SA
-  let vol_sa = Math.sqrt (
-    data
-      .map((x) => Math.pow(x-avg, 2))
-      .reduce((a, b) => a+b, 0) / N
-  );
-
-  // MA
-  let ma = MA(data, window_size);
-  let vol_ma = STD(data, ma);
+  let vol_sa = [];
+  for (let i = 0; i < returns.length; i++) {
+    let curr_sum = 0;
+    for (let j = 0; j <= i; j++) {
+      curr_sum += returns[j];
+    }
+    vol_sa.push(curr_sum/(i+1));
+  }
 
   // EWMA
-  let ema = EWMA(data, window_size);
-  let vol_ema = STD(data, ema);
+  let vol_ewma = [returns[0]];
+  for (let i = 1; i < returns.length; i++) {
+    console.log(vol_ewma, returns, returns[i], vol_ewma[i-1]);
+    vol_ewma.push(
+      (1-lambda)*returns[i] + lambda*vol_ewma[i-1]
+    );
+  }
 
   return {
     vol_sa: vol_sa,
-    vol_ma: vol_ma,
-    vol_ema: vol_ema
+    vol_ewma: vol_ewma
   };
 }
