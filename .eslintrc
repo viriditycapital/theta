@@ -1,0 +1,11 @@
+{
+  "parserOptions": {
+    "ecmaVersion": 11,
+    "sourceType": "module"
+  },
+  "rules": {
+    "indent": ["error", 2],
+    "semi": "error",
+    "comma-dangle": "error"
+  }
+}
