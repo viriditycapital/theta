@@ -99,6 +99,8 @@ async function init () {
 
   let calls = options['optionChain']['result'][0]['options'][0]['calls'];
   let puts  = options['optionChain']['result'][0]['options'][0]['puts'];
+  
+  console.log(puts[0]);
 
   let output_puts = '';
   for (let i = 0; i < puts.length; i++) {
@@ -113,6 +115,9 @@ async function init () {
       <th>
       ${Number(puts[i]['lastPrice']).toFixed(2)}
       </th>
+      <th>
+      ${Number(100*puts[i]['impliedVolatility']).toFixed(2)}
+      </th>
     </tr>
     `;
   }
@@ -124,6 +129,7 @@ async function init () {
     <th>Contract Name</th>
     <th>Strike Price</th>
     <th>Last Price</th>
+    <th>IV</th>
   </tr>
   ${output_puts}
   </table>

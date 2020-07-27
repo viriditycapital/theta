@@ -47,7 +47,6 @@ export function vol_AVG (data, lambda=LAMBDA_EWMA) {
   // EWMA
   let vol_ewma = [returns[0]];
   for (let i = 1; i < returns.length; i++) {
-    console.log(vol_ewma, returns, returns[i], vol_ewma[i-1]);
     vol_ewma.push(
       (1-lambda)*returns[i] + lambda*vol_ewma[i-1]
     );
