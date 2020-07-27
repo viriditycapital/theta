@@ -21,14 +21,12 @@ import { LAMBDA_EWMA } from './CONST_ANALYSIS.js';
  * @returns Object containing sa, ewma volatilities
  */
 export function vol_AVG (data, lambda=LAMBDA_EWMA) {
-  let N = data.length;
-
   // Calculate the returns 
   let returns = [];
   for (let i = 1; i < data.length; i++) {
     returns.push(
       Math.pow(
-        (data[i] - data[i-1]) / data[i-1],
+        Math.log(data[i] / data[i-1]),
         2
       )
     );
