@@ -14,6 +14,7 @@
     "newline-per-chained-call": "error",
     "semi": "error",
     "comma-dangle": "error",
-    "quotes": ["error", "single"]
+    "quotes": ["error", "single"],
+    "comma-spacing": "error"
   }
 }
