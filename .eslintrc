@@ -13,6 +13,7 @@
     "indent": ["error", 2],
     "newline-per-chained-call": "error",
     "semi": "error",
-    "comma-dangle": "error"
+    "comma-dangle": "error",
+    "quotes": ["error", "single"]
   }
 }
