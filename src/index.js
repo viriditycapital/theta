@@ -5,8 +5,10 @@
 import './styles/index.scss';
 import { PROXY_URL } from './constants.js';
 import { vol_AVG } from './analysis/vol.js';
+import * as CONST_STYLE from './CONST_STYLE.js';
+
 import * as d3 from 'd3';
-const YF = require('yahoo-finance');
+import * as YF from 'yahoo-finance';
 
 /**
  * Builds the website and starts up the app
@@ -48,6 +50,7 @@ async function init () {
   // Stonk we are analyzing
   let STONK_TICKER = 'BYND';
 
+  /* Current snapshot of stock */
   let curr_price = await YF.quote({
     symbol: STONK_TICKER
   });
@@ -143,6 +146,9 @@ async function init () {
     );
   }
 
+  // Increase right margin for second plot
+  margin = {top: 20, right: 70, bottom: 50, left: 70};
+
   // set the ranges
   var x_2 = d3.scaleTime().range([0, width]);
   var y_2 = d3.scaleLinear().range([height, 0]);
@@ -168,10 +174,21 @@ async function init () {
     .data([data_vol])
     .attr('fill', 'none')
     .attr('stroke', 'steelblue')
-    .attr('stroke-width', 1.5)
+    .attr('stroke-width', 3)
     .attr('d', d3.line()
       .x(function(d) { return x_2(d.date); })
       .y(function(d) { return y_2(d.vol_ewma); })
+    );
+
+
+  svg_2.append('path')
+    .data([data])
+    .attr('fill', 'none')
+    .attr('stroke', CONST_STYLE.GREEN_BYND)
+    .attr('stroke-width', 1.5)
+    .attr('d', d3.line()
+      .x(function(d) { return x(d.date); })
+      .y(function(d) { return y(d.close); })
     );
 
   // Add the x Axis
@@ -182,6 +199,37 @@ async function init () {
   // Add the y Axis
   svg_2.append('g')
     .call(d3.axisLeft(y_2));
+
+  svg_2.append('g')
+    .attr('transform', `translate(${width}, 0)`)
+    .call(d3.axisRight(y));
+
+  // Handmade legend
+  svg_2.append('circle')
+    .attr('cx', width - 80)
+    .attr('cy', 20)
+    .attr('r', 6)
+    .style('fill', CONST_STYLE.GREEN_BYND);
+
+  svg_2.append('text')
+    .attr('x', width - 60)
+    .attr('y', 20)
+    .text('Price')
+    .style('font-size', '15px')
+    .attr('alignment-baseline', 'middle');
+
+  svg_2.append('circle')
+    .attr('cx', width - 80)
+    .attr('cy', 40)
+    .attr('r', 6)
+    .style('fill', '#404080');
+
+  svg_2.append('text')
+    .attr('x', width - 60)
+    .attr('y', 40)
+    .text('Volatility')
+    .style('font-size', '15px')
+    .attr('alignment-baseline', 'middle');
 
   let output_vol = '';
   for (const [key, value] of Object.entries(vol_res)) {
@@ -245,6 +293,7 @@ async function init () {
 
   vol_analysis.innerHTML = 
   `
+  \\[\\sigma\\]
   <table style="width:100%">
   <tr>
     <th>Time period</th>
@@ -254,6 +303,10 @@ async function init () {
   ${output_vol}
   </table>
   `;
+
+  // Tell MathJax to typeset our equations
+  // eslint-disable-next-line no-undef
+  MathJax.typeset();
 }
 
 init();
