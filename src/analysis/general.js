@@ -1,5 +1,8 @@
 /**
- * General math library
+ * General math library.
+ *
+ * TODO: this may not be widely used, so maybe eventually delete some of these
+ * functions. Webpack will minify them away anyway for production so not a big deal.
  * 
  * @author mikinty
  */

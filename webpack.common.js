@@ -8,7 +8,8 @@ module.exports = {
   plugins: [
     new CleanWebpackPlugin(),
     new HtmlWebpackPlugin({
-      title: 'theta'
+      title: 'theta',
+      template: './src/index.html'
     }),
     new webpack.ProvidePlugin({
       $: 'jquery',
