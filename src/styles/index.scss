@@ -21,3 +21,21 @@ body {
   flex-direction: column;
   align-items: center;
 }
+
+table {
+  border-collapse: collapse;
+
+  th {
+    text-align: center;
+    vertical-align: center;
+  }
+
+  td {
+    text-align: center;
+    vertical-align: center;
+  }
+}
+
+table, th, td {
+  border: 1px solid black;
+}
