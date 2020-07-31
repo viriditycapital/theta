@@ -10,6 +10,7 @@ import * as CONST_STYLE from './CONST_STYLE.js';
 
 import * as d3 from 'd3';
 import * as YF from 'yahoo-finance';
+import { SUCCESS_GRADIENT } from './analysis/CONST_ANALYSIS';
 
 /**
  * Builds the website and starts up the app
@@ -365,10 +366,10 @@ async function init () {
       <td>
       ${Number(100*puts[i]['impliedVolatility']).toFixed(2)}%
       </td>
-      <td>
+      <td style="background-color:${SUCCESS_GRADIENT(cop_d)}">
       ${cop_d}%
       </td>
-      <td>
+      <td style="background-color:${SUCCESS_GRADIENT(cop_w)}">
       ${cop_w}%
       </td>
     </tr>
