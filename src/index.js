@@ -107,7 +107,7 @@ async function init () {
 
   // Scale the range of the data
   x.domain(d3.extent(quotes_d, function(d) { return d.date; }));
-  y.domain([0, d3.max(quotes_d, function(d) { return d.close; })]);
+  y.domain([d3.min(quotes_d, function(d) { return d.close; }), d3.max(quotes_d, function(d) { return d.close; })]);
 
   // Add the valueline path.
   svg.append('path')
@@ -190,7 +190,7 @@ async function init () {
 
   // Scale the range of the data
   x_2.domain(d3.extent(data_vol, function(d) { return d.date; }));
-  y_2.domain([0, d3.max(data_vol, function(d) { return d.vol_ewma; })]);
+  y_2.domain([d3.min(data_vol, function(d) { return d.vol_ewma; }), d3.max(data_vol, function(d) { return d.vol_ewma; })]);
 
   // Plot the price under the volatility
   svg_2.append('path')
@@ -341,39 +341,46 @@ async function init () {
    * volume: 2
    */
 
+  // TODO: unsure if diff_days is accurate, accounting for current trading day
   const one_day = (24 * 60 * 60 * 1000); // hours*minutes*seconds*milliseconds
   const diff_days = Math.ceil(Math.abs((new Date()) - (new Date(1000*puts[0]['expiration']))) / one_day);
 
   let output_puts = '';
   let vol_d_total = vol_res_d['2w'].vol_ewma[vol_res_d['2w'].vol_ewma.length - 1]*diff_days/100;
+  // TODO: Unsure if it is valid to just take 1w vol and divide by 5 for daily...
   let vol_w_total = vol_res_w['3m'].vol_ewma[vol_res_w['3m'].vol_ewma.length - 1]*diff_days/(5*100);
   for (let i = 0; i < puts.length; i++) {
-    // RHS tail, since we want it to be above the strike for profit
-    let cop_d = 
-        (100*(1 - cdf_normal(puts[i]['strike'], curr_price, vol_d_total*curr_price))).toFixed(2);
-    let cop_w = 
-        (100*(1 - cdf_normal(puts[i]['strike'], curr_price, vol_w_total*curr_price))).toFixed(2);
+    if (
+      puts[i]['strike'] > curr_price*(1 - 4*vol_d_total) &&
+      puts[i]['strike'] < curr_price*(1 + 4*vol_d_total)
+    ) {
+      // RHS tail, since we want it to be above the strike for profit
+      let cop_d = 
+          (100*(1 - cdf_normal(puts[i]['strike'], curr_price, vol_d_total*curr_price))).toFixed(2);
+      let cop_w = 
+          (100*(1 - cdf_normal(puts[i]['strike'], curr_price, vol_w_total*curr_price))).toFixed(2);
 
 
-    output_puts +=
-    `<tr>
-      <td>
-      ${Number(puts[i]['strike']).toFixed(2)}
-      </td>
-      <td>
-      ${Number(puts[i]['lastPrice']).toFixed(2)}
-      </td>
-      <td>
-      ${Number(100*puts[i]['impliedVolatility']).toFixed(2)}%
-      </td>
-      <td style="background-color:${SUCCESS_GRADIENT(cop_d)}">
-      ${cop_d}%
-      </td>
-      <td style="background-color:${SUCCESS_GRADIENT(cop_w)}">
-      ${cop_w}%
-      </td>
-    </tr>
-    `;
+      output_puts +=
+      `<tr>
+        <td>
+        ${Number(puts[i]['strike']).toFixed(2)}
+        </td>
+        <td>
+        ${Number(puts[i]['lastPrice']).toFixed(2)}
+        </td>
+        <td>
+        ${Number(100*puts[i]['impliedVolatility']).toFixed(2)}%
+        </td>
+        <td style="background-color:${SUCCESS_GRADIENT(cop_d)}">
+        ${cop_d}%
+        </td>
+        <td style="background-color:${SUCCESS_GRADIENT(cop_w)}">
+        ${cop_w}%
+        </td>
+      </tr>
+      `;
+    }
   }
 
   terminal.innerHTML = 
