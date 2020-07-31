@@ -7,6 +7,18 @@
  * @author mikinty
  */
 
+import { erf } from 'mathjs';
+
+/**
+ * CDF 
+ * @param { float } x Value to calculate CDF at
+ * @param { float } mean 
+ * @param { float } std The standard deviation
+ */
+export function cdf_normal (x, mean, std) {
+  return (1 - erf((mean - x ) / (Math.sqrt(2) * std))) / 2;
+}
+
 /**
  * Standard deviation
  * 
