@@ -4,6 +4,7 @@
 
 import './styles/index.scss';
 import { PROXY_URL } from './constants.js';
+import { cdf_normal } from './analysis/general.js';
 import { vol_AVG } from './analysis/vol.js';
 import * as CONST_STYLE from './CONST_STYLE.js';
 
@@ -52,11 +53,12 @@ async function init () {
 
   title.innerHTML = 'getting quotes...';
   /* Current snapshot of stock */
-  let curr_price = await YF.quote({
+  let curr_price_response = await YF.quote({
     symbol: STONK_TICKER
   });
 
-  title.innerHTML = `<h1>${STONK_TICKER} ${curr_price['price']['regularMarketPrice']}</h1>`;
+  let curr_price = curr_price_response['price']['regularMarketPrice'];
+  title.innerHTML = `<h1>${STONK_TICKER} ${curr_price}</h1>`;
   title.classList.add('title');
 
   terminal.innerHTML = 'loading...';
@@ -342,7 +344,16 @@ async function init () {
   const diff_days = Math.ceil(Math.abs((new Date()) - (new Date(1000*puts[0]['expiration']))) / one_day);
 
   let output_puts = '';
+  let vol_d_total = vol_res_d['2w'].vol_ewma[vol_res_d['2w'].vol_ewma.length - 1]*diff_days/100;
+  let vol_w_total = vol_res_w['3m'].vol_ewma[vol_res_w['3m'].vol_ewma.length - 1]*diff_days/(5*100);
   for (let i = 0; i < puts.length; i++) {
+    // RHS tail, since we want it to be above the strike for profit
+    let cop_d = 
+        (100*(1 - cdf_normal(puts[i]['strike'], curr_price, vol_d_total*curr_price))).toFixed(2);
+    let cop_w = 
+        (100*(1 - cdf_normal(puts[i]['strike'], curr_price, vol_w_total*curr_price))).toFixed(2);
+
+
     output_puts +=
     `<tr>
       <td>
@@ -355,10 +366,10 @@ async function init () {
       ${Number(100*puts[i]['impliedVolatility']).toFixed(2)}%
       </td>
       <td>
-      ${vol_res_d['2w'].vol_ewma[vol_res_d['2w'].vol_ewma.length - 1]*diff_days}
+      ${cop_d}%
       </td>
       <td>
-      ${vol_res_w['3m'].vol_ewma[vol_res_w['3m'].vol_ewma.length - 1]*diff_days/5}
+      ${cop_w}%
       </td>
     </tr>
     `;
