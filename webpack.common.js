@@ -9,7 +9,8 @@ module.exports = {
     new CleanWebpackPlugin(),
     new HtmlWebpackPlugin({
       title: 'theta',
-      template: './src/index.html'
+      template: './src/index.html',
+      favicon: './src/assets/viridity_icon.png'
     }),
     new webpack.ProvidePlugin({
       $: 'jquery',
