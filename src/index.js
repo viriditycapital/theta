@@ -319,7 +319,7 @@ async function init () {
     PROXY_URL + `query1.finance.yahoo.com/v7/finance/options/${STONK_TICKER}`
   );
 
-  // let calls = options['optionChain']['result'][0]['options'][0]['calls'];
+  let calls = options['optionChain']['result'][0]['options'][0]['calls'];
   let puts  = options['optionChain']['result'][0]['options'][0]['puts'];
   /*
    * Sample output:
@@ -340,6 +340,16 @@ async function init () {
    * strike: 65
    * volume: 2
    */
+
+  // Sort calls and puts by indexing the strike price
+  let calls_strike = new Map();
+  for (let i = 0; i < calls.length; i++) {
+    calls_strike.set(calls[i].strike, calls[i]);
+  }
+  let puts_strike = new Map();
+  for (let i = 0; i < puts.length; i++) {
+    puts_strike.set(puts[i].strike, puts[i]);
+  }
 
   // TODO: unsure if diff_days is accurate, accounting for current trading day
   const one_day = (24 * 60 * 60 * 1000); // hours*minutes*seconds*milliseconds
@@ -403,6 +413,28 @@ async function init () {
   ${output_vol}
   </table>
   `;
+
+  // Implied move
+  // We calculate this as the straddle (ATM Call + Put) * 0.85
+  let atm_strike = Math.round(curr_price);
+
+  console.log(puts_strike);
+
+
+  let put_mid = (puts_strike.get(atm_strike).ask + puts_strike.get(atm_strike).bid) / 2;
+  let call_mid = (calls_strike.get(atm_strike).ask + calls_strike.get(atm_strike).bid) / 2;
+  let straddle = 0.85 * (put_mid + call_mid);
+
+  let implied_move = document.createElement('div');
+  implied_move.classList.add('implied_move');
+
+  implied_move.innerHTML = 
+  `
+  <b>Implied move for ${STONK_TICKER} until ${(new Date(1000*puts[0].expiration)).toDateString()}</b>
+  ${(100*(straddle/curr_price)).toFixed(2)}%
+  `;
+
+  right_side.appendChild(implied_move);
 
   // Tell MathJax to typeset our equations
   // eslint-disable-next-line no-undef
