@@ -424,6 +424,7 @@ async function init () {
   let put_mid = (puts_strike.get(atm_strike).ask + puts_strike.get(atm_strike).bid) / 2;
   let call_mid = (calls_strike.get(atm_strike).ask + calls_strike.get(atm_strike).bid) / 2;
   let straddle = 0.85 * (put_mid + call_mid);
+  let move_percentage = (straddle/curr_price);
 
   let implied_move = document.createElement('div');
   implied_move.classList.add('implied_move');
@@ -431,7 +432,11 @@ async function init () {
   implied_move.innerHTML = 
   `
   <b>Implied move for ${STONK_TICKER} until ${(new Date(1000*puts[0].expiration)).toDateString()}</b>
-  ${(100*(straddle/curr_price)).toFixed(2)}%
+  ${(100*move_percentage).toFixed(2)}%
+  <br>
+  At current price of $${curr_price}, this means a target of 
+  $${(curr_price*(1-move_percentage)).toFixed(2)} or
+  $${(curr_price*(1+move_percentage)).toFixed(2)} 
   `;
 
   right_side.appendChild(implied_move);
