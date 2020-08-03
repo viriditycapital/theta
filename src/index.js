@@ -3,12 +3,12 @@
  */
 
 import './styles/index.scss';
-import { PROXY_URL } from './constants.js';
+import * as CONST from './constants.js';
 import { cdf_normal } from './analysis/general.js';
 import { vol_AVG } from './analysis/vol.js';
 import * as CONST_STYLE from './CONST_STYLE.js';
+import * as PLOT_LIB from './plot/plot.js';
 
-import * as d3 from 'd3';
 import * as YF from 'yahoo-finance';
 import { SUCCESS_GRADIENT } from './analysis/CONST_ANALYSIS';
 
@@ -23,23 +23,36 @@ async function init () {
   let vol_analysis = document.createElement('div');
   let chart_vol = document.createElement('div');
   chart_vol.id = 'chart_vol';
+  let implied_move = document.createElement('div');
+  implied_move.classList.add('implied_move');
 
   right_side.classList.add('right_side');
   right_title.classList.add('title');
 
-  right_title.innerHTML = '<h1>Analysis</h1>';
+  right_title.innerHTML = 'Analysis';
   right_side.appendChild(right_title);
   right_side.appendChild(chart_vol);
   right_side.appendChild(vol_analysis);
+  right_side.appendChild(implied_move);
 
   // Left side
   let left_side = document.createElement('div');
   left_side.classList.add('left_side');
-  let title    = document.createElement('div');
+  let title = document.createElement('div');
+  let title_stock_price = document.createElement('div');
+  let title_stock_change = document.createElement('div');
+  let search_bar = document.createElement('div');
+  search_bar.classList.add('search_bar');
+  let ticker_input = document.createElement('input');
+
   let chart_price = document.createElement('div');
   chart_price.id = 'chart_price';
   let terminal = document.createElement('div');
 
+  search_bar.appendChild(ticker_input);
+  title.appendChild(search_bar);
+  title.appendChild(title_stock_price);
+  title.appendChild(title_stock_change);
   left_side.appendChild(title);
   left_side.appendChild(chart_price);
   left_side.appendChild(terminal);
@@ -48,418 +61,347 @@ async function init () {
   document.body.appendChild(left_side);
   document.body.appendChild(right_side);
 
+  // Search Bar
+  ticker_input.addEventListener('keyup', (event) => {
+    // Number 13 is the "Enter" key on the keyboard
+    if (event.keyCode === 13) {
+      // Cancel the default action, if needed
+      event.preventDefault();
+
+      // Reset visibility
+      title.classList.remove('search_active') ;
+      search_bar.classList.remove('search_active');
+      document.body.classList.remove('search_active');
+
+      // Get new quotes
+      let search_ticker = ticker_input.value;
+      main(search_ticker);
+    }
+  });
+
+  title_stock_price.onclick = () => {
+    search_bar.classList.add('search_active');
+    title.classList.add('search_active');
+    document.body.classList.add('search_active');
+  };
+
+  main(CONST.DEFAULT_TICKER);
+
+  async function main (ticker) {
+    ticker = ticker.toUpperCase();
+    PLOT_LIB.remove_plot('chart_price');
+    PLOT_LIB.remove_plot('chart_vol');
+    let curr_price = await get_current_quote(ticker);
+    get_historical_quotes(ticker, curr_price);
+  }
+
   /** GATHER DATA AND PERFORM ANALYSIS **/
-  // Stonk we are analyzing
-  let STONK_TICKER = 'BYND';
+  async function get_current_quote (ticker) {
+    title_stock_price.innerHTML = 'getting quotes...';
+    /* Current snapshot of stock */
+    let curr_price_response = await YF.quote({
+      symbol: ticker
+    });
+    title_stock_price.innerHTML = '';
 
-  title.innerHTML = 'getting quotes...';
-  /* Current snapshot of stock */
-  let curr_price_response = await YF.quote({
-    symbol: STONK_TICKER
-  });
-  title.innerHTML = '';
+    let curr_price = curr_price_response['price']['regularMarketPrice'];
+    let curr_price_delta = (curr_price_response['price']['regularMarketChange']).toFixed(2);
+    let curr_price_delta_percent = (100*curr_price_response['price']['regularMarketChangePercent']).toFixed(2);
 
-  console.log(curr_price_response);
+    title_stock_price.innerHTML = `${ticker} $${(curr_price).toFixed(2)}`;
+    title_stock_price.classList.add('stock_ticker_price');
 
-  let curr_price = curr_price_response['price']['regularMarketPrice'];
-  let curr_price_delta = (curr_price_response['price']['regularMarketChange']).toFixed(2);
-  let curr_price_delta_percent = (100*curr_price_response['price']['regularMarketChangePercent']).toFixed(2);
-  let title_stock_price = document.createElement('div');
-  let title_stock_change = document.createElement('div');
-  title_stock_price.innerHTML = `<h1>${STONK_TICKER} $${(curr_price).toFixed(2)}</h1>`;
+    if (curr_price_delta >= 0) {
+      title_stock_change.innerHTML = `<b>+${curr_price_delta} (+${curr_price_delta_percent}%)</b>`;
+      title_stock_change.classList.add('stock_ticker_green');
+    } else {
+      title_stock_change.innerHTML = `<b>-${curr_price_delta} (-${curr_price_delta_percent}%)</b>`;
+      title_stock_change.classList.add('stock_ticker_red');
+    }
 
-  if (curr_price_delta >= 0) {
-    title_stock_change.innerHTML = `<b>+${curr_price_delta} (+${curr_price_delta_percent}%)</b>`;
-    title_stock_change.classList.add('stock_ticker_green');
-  } else {
-    title_stock_change.innerHTML = `<b>-${curr_price_delta} (-${curr_price_delta_percent}%)</b>`;
-    title_stock_change.classList.add('stock_ticker_red');
+    title.classList.add('title');
+    title_stock_change.classList.add('stock_ticker_change');
+
+    return curr_price;
   }
 
-  title.appendChild(title_stock_price);
-  title.appendChild(title_stock_change);
-  title.classList.add('title');
-  title_stock_change.classList.add('stock_ticker_change');
+  async function get_historical_quotes (ticker, curr_price) {
+    let YAHOO_DATE = (date) => `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`;
 
-  terminal.innerHTML = 'loading...';
+    /** Historical quotes */
+    terminal.innerHTML = 'loading...';
+    let curr_date = new Date();
+    let curr_date_string = YAHOO_DATE(curr_date);
+    curr_date.setFullYear(curr_date.getFullYear() - 1);
+    let past_date_string = YAHOO_DATE(curr_date);
 
-  /** Historical quotes */
-  let curr_date = new Date();
-  let curr_date_string = `${curr_date.getFullYear()}-${curr_date.getMonth()+1}-${curr_date.getDate()}`;
-  curr_date.setFullYear(curr_date.getFullYear() - 1);
-  let past_date_string = `${curr_date.getFullYear()}-${curr_date.getMonth()+1}-${curr_date.getDate()}`;
+    let quotes_d = await YF.historical({
+      symbol: ticker,
+      from: past_date_string,
+      to: curr_date_string,
+      period: 'd'
+    });
 
-  let quotes_d = await YF.historical({
-    symbol: STONK_TICKER,
-    from: past_date_string,
-    to: curr_date_string,
-    period: 'd'
-  });
+    // If the current week is not complete, the weekly will return a null entry
+    let prev_monday = new Date();
+    prev_monday.setDate(prev_monday.getDate() - 1 - (prev_monday.getDay() + 6) % 7);
 
-  let quotes_w = await YF.historical({
-    symbol: STONK_TICKER,
-    from: past_date_string,
-    to: curr_date_string,
-    period: 'w'
-  });
+    let quotes_w = await YF.historical({
+      symbol: ticker,
+      from: past_date_string,
+      to: YAHOO_DATE(prev_monday),
+      period: 'w'
+    });
 
-  // set the dimensions and margins of the graph
-  var margin = {top: 20, right: 20, bottom: 50, left: 70};
-  var width = 460 - margin.left - margin.right;
-  var height = 450 - margin.top - margin.bottom;
-
-  // set the ranges
-  var x = d3.scaleTime().range([0, width]);
-  var y = d3.scaleLinear().range([height, 0]);
-
-  // append the svg obgect to the body of the page
-  // appends a 'group' element to 'svg'
-  // moves the 'group' element to the top left margin
-  var svg = d3.select('#chart_price').append('svg')
-    .attr('width', width + margin.left + margin.right)
-    .attr('height', height + margin.top + margin.bottom)
-    .append('g')
-    .attr(
-      'transform',
-      'translate(' + margin.left + ',' + margin.top + ')'
+    PLOT_LIB.plot_line(
+      'chart_price', 
+      quotes_d,
+      'date',
+      'close'
     );
 
-  // Scale the range of the data
-  x.domain(d3.extent(quotes_d, function(d) { return d.date; }));
-  y.domain([d3.min(quotes_d, function(d) { return d.close; }), d3.max(quotes_d, function(d) { return d.close; })]);
+    // Concern: when we do things like this we lose the date that is associated
+    // with each price
+    let prices_d = quotes_d.map((e) => e.close);
+    let prices_w = quotes_w.map((e) => e.close);
 
-  // Add the valueline path.
-  svg.append('path')
-    .data([quotes_d])
-    .attr('fill', 'none')
-    .attr('stroke', CONST_STYLE.BLUE_FB)
-    .attr('stroke-width', 1.5)
-    .attr('d', d3.line()
-      .x(function(d) { return x(d.date); })
-      .y(function(d) { return y(d.close); })
+    let vol_res_d = {
+      '2w' : vol_AVG(prices_d.slice(0, 10)),
+      '1m' : vol_AVG(prices_d.slice(0, 20)),
+      '3m' : vol_AVG(prices_d.slice(0, 60)),
+      '6m' : vol_AVG(prices_d.slice(0, 120)),
+      '1y' : vol_AVG(prices_d)
+    };
+
+    let vol_res_w = {
+      '3m' : vol_AVG(prices_w.slice(0, 12)),
+      '6m' : vol_AVG(prices_w.slice(0, 24)),
+      '1y' : vol_AVG(prices_w)
+    };
+
+    console.log(quotes_w);
+    console.log(prices_w);
+
+    // Plot volatility
+    // Notice that we have one less data point since we don't 
+    // have the volatility for the first day
+    let data_vol = [];
+
+    for (let i = 1; i < quotes_d.length; i++) {
+      data_vol.push(
+        {
+          date: quotes_d[i]['date'],
+          vol_sa: vol_res_d['1y']['vol_sa'][i-1],
+          vol_ewma: vol_res_d['1y']['vol_ewma'][i-1]
+        }
+      );
+    }
+
+    let chart_vol_margin = {top: 20, right: 70, bottom: 50, left: 70};
+
+    // Increase right margin for second plot since we are plotting two series
+    let chart_vol_svg = PLOT_LIB.plot_line(
+      'chart_vol',
+      data_vol,
+      'date',
+      'vol_ewma',
+      CONST_STYLE.BLUE_FB,
+      chart_vol_margin
     );
 
-  // Add the x Axis
-  svg.append('g')
-    .attr('transform', 'translate(0,' + height + ')')
-    .call(d3.axisBottom(x))
-    .selectAll('text')
-    .attr('y', 0)
-    .attr('x', 9)
-    .attr('dy', '.35em')
-    .attr('transform', 'rotate(90)')
-    .style('text-anchor', 'start');
-
-  // Add the y Axis
-  svg.append('g')
-    .call(d3.axisLeft(y));
-
-  // Concern: when we do things like this we lose the date that is associated
-  // with each price
-  let prices_d = quotes_d.map((e) => e.close);
-  let prices_w = quotes_w.map((e) => e.close);
-
-  let vol_res_d = {
-    '2w' : vol_AVG(prices_d.slice(0, 10)),
-    '1m' : vol_AVG(prices_d.slice(0, 20)),
-    '3m' : vol_AVG(prices_d.slice(0, 60)),
-    '6m' : vol_AVG(prices_d.slice(0, 120)),
-    '1y' : vol_AVG(prices_d)
-  };
-
-  let vol_res_w = {
-    '3m' : vol_AVG(prices_w.slice(0, 12)),
-    '6m' : vol_AVG(prices_w.slice(0, 24)),
-    '1y' : vol_AVG(prices_w)
-  };
-
-  // Plot volatility
-  // Notice that we have one less data point since we don't 
-  // have the volatility for the first day
-  let data_vol = [];
-
-  for (let i = 1; i < quotes_d.length; i++) {
-    data_vol.push(
-      {
-        date: quotes_d[i]['date'],
-        vol_sa: vol_res_d['1y']['vol_sa'][i-1],
-        vol_ewma: vol_res_d['1y']['vol_ewma'][i-1]
-      }
-    );
-  }
-
-  // Increase right margin for second plot
-  margin = {top: 20, right: 70, bottom: 50, left: 70};
-
-  // set the ranges
-  var x_2 = d3.scaleTime().range([0, width]);
-  var y_2 = d3.scaleLinear().range([height, 0]);
-
-  // append the svg object to the body of the page
-  // appends a 'group' element to 'svg'
-  // moves the 'group' element to the top left margin
-  var svg_2 = d3.select('#chart_vol').append('svg')
-    .attr('width', width + margin.left + margin.right)
-    .attr('height', height + margin.top + margin.bottom)
-    .append('g')
-    .attr(
-      'transform',
-      'translate(' + margin.left + ',' + margin.top + ')'
+    PLOT_LIB.plot_line_only(
+      chart_vol_svg,
+      quotes_d,
+      'date',
+      'close',
+      CONST_STYLE.GREEN_BYND,
+      chart_vol_margin
     );
 
-  // Scale the range of the data
-  x_2.domain(d3.extent(data_vol, function(d) { return d.date; }));
-  y_2.domain([d3.min(data_vol, function(d) { return d.vol_ewma; }), d3.max(data_vol, function(d) { return d.vol_ewma; })]);
-
-  // Plot the price under the volatility
-  svg_2.append('path')
-    .data([quotes_d])
-    .attr('fill', 'none')
-    .attr('stroke', CONST_STYLE.GREEN_BYND)
-    .attr('stroke-width', 1.5)
-    .attr('d', d3.line()
-      .x(function(d) { return x(d.date); })
-      .y(function(d) { return y(d.close); })
-    );
-  
-  // Plot the volatility
-  svg_2.append('path')
-    .data([data_vol])
-    .attr('fill', 'none')
-    .attr('stroke', CONST_STYLE.BLUE_FB)
-    .attr('stroke-width', 3)
-    .attr('d', d3.line()
-      .x(function(d) { return x_2(d.date); })
-      .y(function(d) { return y_2(d.vol_ewma); })
+    PLOT_LIB.add_legend(
+      chart_vol_svg,
+      ['Volatility', 'Price'],
+      [CONST_STYLE.BLUE_FB, CONST_STYLE.GREEN_BYND],
+      chart_vol_margin
     );
 
-  // Add the x Axis
-  svg_2.append('g')
-    .attr('transform', 'translate(0,' + height + ')')
-    .call(d3.axisBottom(x_2))
-    .selectAll('text')
-    .attr('y', 0)
-    .attr('x', 9)
-    .attr('dy', '.35em')
-    .attr('transform', 'rotate(90)')
-    .style('text-anchor', 'start');
+    let output_vol = '';
 
-  // Add the y Axis
-  svg_2.append('g')
-    .call(d3.axisLeft(y_2));
-
-  svg_2.append('g')
-    .attr('transform', `translate(${width}, 0)`)
-    .call(d3.axisRight(y));
-
-  // Handmade legend
-  svg_2.append('circle')
-    .attr('cx', width - 80)
-    .attr('cy', 20)
-    .attr('r', 6)
-    .style('fill', CONST_STYLE.GREEN_BYND);
-
-  svg_2.append('text')
-    .attr('x', width - 60)
-    .attr('y', 20)
-    .text('Price')
-    .style('font-size', '15px')
-    .attr('alignment-baseline', 'middle');
-
-  svg_2.append('circle')
-    .attr('cx', width - 80)
-    .attr('cy', 40)
-    .attr('r', 6)
-    .style('fill', '#404080');
-
-  svg_2.append('text')
-    .attr('x', width - 60)
-    .attr('y', 40)
-    .text('Volatility')
-    .style('font-size', '15px')
-    .attr('alignment-baseline', 'middle');
-
-  let output_vol = '';
-
-  // First do the weekly
-  output_vol += 
-  `
-  <th colspan="3">Granularity: 1w</th>
-  <tr>
-    <th>Sample timeline</th>
-    <th>SA</th>
-    <th>EWMA</th>
-  </tr>
-  `;
-  for (const [key, value] of Object.entries(vol_res_w)) {
-    output_vol +=
-    `<tr>
-      <td>
-      ${key}
-      </td>
-      <td>
-      ${(value.vol_sa[value.vol_sa.length-1]).toFixed(3)}%
-      </td>
-      <td>
-      ${(value.vol_ewma[value.vol_ewma.length-1]).toFixed(3)}%
-      </td>
+    // First do the weekly
+    output_vol += 
+    `
+    <th colspan="3">Granularity: 1w</th>
+    <tr>
+      <th>Sample timeline</th>
+      <th>SA</th>
+      <th>EWMA</th>
     </tr>
     `;
-  }
-
-  // Do the daily volatility
-  output_vol += 
-  `
-  <th colspan="3">Granularity: 1d</th>
-  <tr>
-    <th>Sample timeline</th>
-    <th>SA</th>
-    <th>EWMA</th>
-  </tr>
-  `;
-  for (const [key, value] of Object.entries(vol_res_d)) {
-    output_vol +=
-    `<tr>
-      <td>
-      ${key}
-      </td>
-      <td>
-      ${(value.vol_sa[value.vol_sa.length-1]).toFixed(3)}%
-      </td>
-      <td>
-      ${(value.vol_ewma[value.vol_ewma.length-1]).toFixed(3)}%
-      </td>
-    </tr>
-    `;
-  }
-
-  /** Options quotes **/
-  let options = await $.ajax(
-    PROXY_URL + `query1.finance.yahoo.com/v7/finance/options/${STONK_TICKER}`
-  );
-
-  let calls = options['optionChain']['result'][0]['options'][0]['calls'];
-  let puts  = options['optionChain']['result'][0]['options'][0]['puts'];
-  /*
-   * Sample output:
-   *
-   * ask: 0.01
-   * bid: 0
-   * change: 0
-   * contractSize: "REGULAR"
-   * contractSymbol: "BYND200731P00065000"
-   * currency: "USD"
-   * expiration: 1596153600
-   * impliedVolatility: 3.93750015625
-   * inTheMoney: false
-   * lastPrice: 0.01
-   * lastTradeDate: 1595943521
-   * openInterest: 154
-   * percentChange: 0
-   * strike: 65
-   * volume: 2
-   */
-
-  // Sort calls and puts by indexing the strike price
-  let calls_strike = new Map();
-  for (let i = 0; i < calls.length; i++) {
-    calls_strike.set(calls[i].strike, calls[i]);
-  }
-  let puts_strike = new Map();
-  for (let i = 0; i < puts.length; i++) {
-    puts_strike.set(puts[i].strike, puts[i]);
-  }
-
-  // TODO: unsure if diff_days is accurate, accounting for current trading day
-  const one_day = (24 * 60 * 60 * 1000); // hours*minutes*seconds*milliseconds
-  const diff_days = Math.ceil(Math.abs((new Date()) - (new Date(1000*puts[0]['expiration']))) / one_day);
-
-  let output_puts = '';
-  let vol_d_total = vol_res_d['2w'].vol_ewma[vol_res_d['2w'].vol_ewma.length - 1]*diff_days/100;
-  // TODO: Unsure if it is valid to just take 1w vol and divide by 5 for daily...
-  let vol_w_total = vol_res_w['3m'].vol_ewma[vol_res_w['3m'].vol_ewma.length - 1]*diff_days/(5*100);
-  for (let i = 0; i < puts.length; i++) {
-    if (
-      puts[i]['strike'] > curr_price*(1 - 4*vol_d_total) &&
-      puts[i]['strike'] < curr_price*(1 + 4*vol_d_total)
-    ) {
-      // RHS tail, since we want it to be above the strike for profit
-      let cop_d = 
-          (100*(1 - cdf_normal(puts[i]['strike'], curr_price, vol_d_total*curr_price))).toFixed(2);
-      let cop_w = 
-          (100*(1 - cdf_normal(puts[i]['strike'], curr_price, vol_w_total*curr_price))).toFixed(2);
-
-
-      output_puts +=
+    for (const [key, value] of Object.entries(vol_res_w)) {
+      output_vol +=
       `<tr>
         <td>
-        ${Number(puts[i]['strike']).toFixed(2)}
+        ${key}
         </td>
         <td>
-        ${Number(puts[i]['lastPrice']).toFixed(2)}
+        ${(value.vol_sa[value.vol_sa.length-1]).toFixed(3)}%
         </td>
         <td>
-        ${Number(100*puts[i]['impliedVolatility']).toFixed(2)}%
-        </td>
-        <td style="background-color:${SUCCESS_GRADIENT(cop_d)}">
-        ${cop_d}%
-        </td>
-        <td style="background-color:${SUCCESS_GRADIENT(cop_w)}">
-        ${cop_w}%
+        ${(value.vol_ewma[value.vol_ewma.length-1]).toFixed(3)}%
         </td>
       </tr>
       `;
     }
+
+    // Do the daily volatility
+    output_vol += 
+    `
+    <th colspan="3">Granularity: 1d</th>
+    <tr>
+      <th>Sample timeline</th>
+      <th>SA</th>
+      <th>EWMA</th>
+    </tr>
+    `;
+    for (const [key, value] of Object.entries(vol_res_d)) {
+      output_vol +=
+      `<tr>
+        <td>
+        ${key}
+        </td>
+        <td>
+        ${(value.vol_sa[value.vol_sa.length-1]).toFixed(3)}%
+        </td>
+        <td>
+        ${(value.vol_ewma[value.vol_ewma.length-1]).toFixed(3)}%
+        </td>
+      </tr>
+      `;
+    }
+
+    /** Options quotes **/
+    let options = await $.ajax(
+      CONST.PROXY_URL + `query1.finance.yahoo.com/v7/finance/options/${ticker}`
+    );
+
+    let calls = options['optionChain']['result'][0]['options'][0]['calls'];
+    let puts  = options['optionChain']['result'][0]['options'][0]['puts'];
+    /*
+    * Sample output:
+    *
+    * ask: 0.01
+    * bid: 0
+    * change: 0
+    * contractSize: "REGULAR"
+    * contractSymbol: "BYND200731P00065000"
+    * currency: "USD"
+    * expiration: 1596153600
+    * impliedVolatility: 3.93750015625
+    * inTheMoney: false
+    * lastPrice: 0.01
+    * lastTradeDate: 1595943521
+    * openInterest: 154
+    * percentChange: 0
+    * strike: 65
+    * volume: 2
+    */
+
+    // Sort calls and puts by indexing the strike price
+    let calls_strike = new Map();
+    for (let i = 0; i < calls.length; i++) {
+      calls_strike.set(calls[i].strike, calls[i]);
+    }
+    let puts_strike = new Map();
+    for (let i = 0; i < puts.length; i++) {
+      puts_strike.set(puts[i].strike, puts[i]);
+    }
+
+    // TODO: unsure if diff_days is accurate, accounting for current trading day
+    const one_day = (24 * 60 * 60 * 1000); // hours*minutes*seconds*milliseconds
+    const diff_days = Math.ceil(Math.abs((new Date()) - (new Date(1000*puts[0]['expiration']))) / one_day);
+
+    let output_puts = '';
+    let vol_d_total = vol_res_d['2w'].vol_ewma[vol_res_d['2w'].vol_ewma.length - 1]*diff_days/100;
+    // TODO: Unsure if it is valid to just take 1w vol and divide by 5 for daily...
+    let vol_w_total = vol_res_w['3m'].vol_ewma[vol_res_w['3m'].vol_ewma.length - 1]*diff_days/(5*100);
+    for (let i = 0; i < puts.length; i++) {
+      if (
+        puts[i]['strike'] > curr_price*(1 - 4*vol_d_total) &&
+        puts[i]['strike'] < curr_price*(1 + 4*vol_d_total)
+      ) {
+        // RHS tail, since we want it to be above the strike for profit
+        let cop_d = 
+            (100*(1 - cdf_normal(puts[i]['strike'], curr_price, vol_d_total*curr_price))).toFixed(2);
+        let cop_w = 
+            (100*(1 - cdf_normal(puts[i]['strike'], curr_price, vol_w_total*curr_price))).toFixed(2);
+
+
+        output_puts +=
+        `<tr>
+          <td>
+          ${Number(puts[i]['strike']).toFixed(2)}
+          </td>
+          <td>
+          ${Number(puts[i]['lastPrice']).toFixed(2)}
+          </td>
+          <td>
+          ${Number(100*puts[i]['impliedVolatility']).toFixed(2)}%
+          </td>
+          <td style="background-color:${SUCCESS_GRADIENT(cop_d)}">
+          ${cop_d}%
+          </td>
+          <td style="background-color:${SUCCESS_GRADIENT(cop_w)}">
+          ${cop_w}%
+          </td>
+        </tr>
+        `;
+      }
+    }
+
+    terminal.innerHTML = 
+    `
+    <table style="width:100%">
+    <tr>
+      <th>Strike</th>
+      <th>Last Price</th>
+      <th>IV</th>
+      <th>COP_d</th>
+      <th>COP_w</th>
+    </tr>
+    ${output_puts}
+    </table>
+    `;
+
+    vol_analysis.innerHTML = 
+    `
+    <table style="width:100%">
+    ${output_vol}
+    </table>
+    `;
+
+    // Implied move
+    // We calculate this as the straddle (ATM Call + Put) * 0.85
+    let atm_strike = Math.round(curr_price);
+
+    let put_mid = (puts_strike.get(atm_strike).ask + puts_strike.get(atm_strike).bid) / 2;
+    let call_mid = (calls_strike.get(atm_strike).ask + calls_strike.get(atm_strike).bid) / 2;
+    let straddle = 0.85 * (put_mid + call_mid);
+    let move_percentage = (straddle/curr_price);
+
+    implied_move.innerHTML = 
+    `
+    <b>Implied move for ${ticker} until ${(new Date(1000*puts[0].expiration)).toDateString()}</b>
+    ${(100*move_percentage).toFixed(2)}%
+    <br>
+    At current price of $${curr_price}, this means a target of 
+    $${(curr_price*(1-move_percentage)).toFixed(2)} or
+    $${(curr_price*(1+move_percentage)).toFixed(2)} 
+    `;
   }
 
-  terminal.innerHTML = 
-  `
-  <table style="width:100%">
-  <tr>
-    <th>Strike</th>
-    <th>Last Price</th>
-    <th>IV</th>
-    <th>COP_d</th>
-    <th>COP_w</th>
-  </tr>
-  ${output_puts}
-  </table>
-  `;
-
-  vol_analysis.innerHTML = 
-  `
-  <table style="width:100%">
-  ${output_vol}
-  </table>
-  `;
-
-  // Implied move
-  // We calculate this as the straddle (ATM Call + Put) * 0.85
-  let atm_strike = Math.round(curr_price);
-
-  let put_mid = (puts_strike.get(atm_strike).ask + puts_strike.get(atm_strike).bid) / 2;
-  let call_mid = (calls_strike.get(atm_strike).ask + calls_strike.get(atm_strike).bid) / 2;
-  let straddle = 0.85 * (put_mid + call_mid);
-  let move_percentage = (straddle/curr_price);
-
-  let implied_move = document.createElement('div');
-  implied_move.classList.add('implied_move');
-
-  implied_move.innerHTML = 
-  `
-  <b>Implied move for ${STONK_TICKER} until ${(new Date(1000*puts[0].expiration)).toDateString()}</b>
-  ${(100*move_percentage).toFixed(2)}%
-  <br>
-  At current price of $${curr_price}, this means a target of 
-  $${(curr_price*(1-move_percentage)).toFixed(2)} or
-  $${(curr_price*(1+move_percentage)).toFixed(2)} 
-  `;
-
-  right_side.appendChild(implied_move);
-
-  // Tell MathJax to typeset our equations
-  // eslint-disable-next-line no-undef
-  MathJax.typeset();
 }
 
 init();
+// Tell MathJax to typeset our equations
+// eslint-disable-next-line no-undef
+MathJax.typeset();
