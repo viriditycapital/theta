@@ -110,7 +110,9 @@ export function plot_line_only (
     );
 
   // Add the y Axis
+  // TODO: this is a temporary fix to plot two series on one plot
   chart_obj.append('g')
+    .attr('transform', `translate(${width}, 0)`)
     .call(d3.axisRight(y));
 }
 
