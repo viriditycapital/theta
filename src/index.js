@@ -381,7 +381,18 @@ async function init () {
 
     // Implied move
     // We calculate this as the straddle (ATM Call + Put) * 0.85
-    let atm_strike = Math.round(curr_price);
+    // We have to manually calculate the closest strike
+    let atm_strike = -1;
+    for (const [key, value] of puts_strike.entries()) {
+      if (
+        (atm_strike < 0) || 
+        (Math.abs(curr_price - key) < Math.abs(curr_price - atm_strike))
+      ) {
+        atm_strike = key;
+      }
+    }
+
+    console.log(atm_strike);
 
     let put_mid = (puts_strike.get(atm_strike).ask + puts_strike.get(atm_strike).bid) / 2;
     let call_mid = (calls_strike.get(atm_strike).ask + calls_strike.get(atm_strike).bid) / 2;
