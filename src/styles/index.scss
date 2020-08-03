@@ -1,3 +1,9 @@
+/**
+ * Main stylesheet
+ */
+
+@import './constants.scss';
+
 body {
   width: 100vw;
   margin: 0;
@@ -43,4 +49,47 @@ table {
 
 table, th, td {
   border: 1px solid black;
+}
+
+.title {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  margin-top: 24px;
+  font-size: xx-large;
+
+  &.search_active {
+    .stock_ticker_price, .stock_ticker_change {
+      display: none;
+    }
+  }
+
+  .stock_ticker_price {
+    display: block;
+    cursor: pointer;
+  }
+
+  .stock_ticker_change {
+    font-size: x-large;
+    margin-left: 18px;
+
+    &.stock_ticker_green {
+      color: $viridity_med;
+    }
+
+    &.stock_ticker_red {
+      color: $red_google;
+    }
+  }
+}
+
+/**
+ * Popup search bar for changing the ticker
+ */
+.search_bar {
+  display: none;
+
+  &.search_active {
+    display: block;
+  }
 }
