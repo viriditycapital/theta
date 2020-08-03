@@ -83,6 +83,8 @@ async function init () {
     search_bar.classList.add('search_active');
     title.classList.add('search_active');
     document.body.classList.add('search_active');
+
+    ticker_input.focus();
   };
 
   main(CONST.DEFAULT_TICKER);
