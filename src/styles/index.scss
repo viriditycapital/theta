@@ -1,3 +1,9 @@
+/**
+ * Main stylesheet
+ */
+
+@import './constants.scss';
+
 body {
   width: 100vw;
   margin: 0;
@@ -43,4 +49,23 @@ table {
 
 table, th, td {
   border: 1px solid black;
+}
+
+.title {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+
+  .stock_ticker_change {
+    font-size: x-large;
+    margin-left: 18px;
+  }
+
+  .stock_ticker_green {
+    color: $viridity_med;
+  }
+
+  .stock_ticker_red {
+    color: $red_google;
+  }
 }

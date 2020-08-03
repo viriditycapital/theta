@@ -57,10 +57,29 @@ async function init () {
   let curr_price_response = await YF.quote({
     symbol: STONK_TICKER
   });
+  title.innerHTML = '';
+
+  console.log(curr_price_response);
 
   let curr_price = curr_price_response['price']['regularMarketPrice'];
-  title.innerHTML = `<h1>${STONK_TICKER} ${curr_price}</h1>`;
+  let curr_price_delta = (curr_price_response['price']['regularMarketChange']).toFixed(2);
+  let curr_price_delta_percent = (100*curr_price_response['price']['regularMarketChangePercent']).toFixed(2);
+  let title_stock_price = document.createElement('div');
+  let title_stock_change = document.createElement('div');
+  title_stock_price.innerHTML = `<h1>${STONK_TICKER} $${(curr_price).toFixed(2)}</h1>`;
+
+  if (curr_price_delta >= 0) {
+    title_stock_change.innerHTML = `<b>+${curr_price_delta} (+${curr_price_delta_percent}%)</b>`;
+    title_stock_change.classList.add('stock_ticker_green');
+  } else {
+    title_stock_change.innerHTML = `<b>-${curr_price_delta} (-${curr_price_delta_percent}%)</b>`;
+    title_stock_change.classList.add('stock_ticker_red');
+  }
+
+  title.appendChild(title_stock_price);
+  title.appendChild(title_stock_change);
   title.classList.add('title');
+  title_stock_change.classList.add('stock_ticker_change');
 
   terminal.innerHTML = 'loading...';
 
@@ -417,9 +436,6 @@ async function init () {
   // Implied move
   // We calculate this as the straddle (ATM Call + Put) * 0.85
   let atm_strike = Math.round(curr_price);
-
-  console.log(puts_strike);
-
 
   let put_mid = (puts_strike.get(atm_strike).ask + puts_strike.get(atm_strike).bid) / 2;
   let call_mid = (calls_strike.get(atm_strike).ask + calls_strike.get(atm_strike).bid) / 2;
