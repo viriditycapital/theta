@@ -39,8 +39,11 @@ async function init () {
   let left_side = document.createElement('div');
   left_side.classList.add('left_side');
   let title = document.createElement('div');
+  title.classList.add('title');
   let title_stock_price = document.createElement('div');
+  title_stock_price.classList.add('stock_ticker_price');
   let title_stock_change = document.createElement('div');
+  title_stock_change.classList.add('stock_ticker_change');
   let search_bar = document.createElement('div');
   search_bar.classList.add('search_bar');
   let ticker_input = document.createElement('input');
@@ -111,18 +114,16 @@ async function init () {
     let curr_price_delta_percent = (100*curr_price_response['price']['regularMarketChangePercent']).toFixed(2);
 
     title_stock_price.innerHTML = `${ticker} $${(curr_price).toFixed(2)}`;
-    title_stock_price.classList.add('stock_ticker_price');
 
     if (curr_price_delta >= 0) {
       title_stock_change.innerHTML = `<b>+${curr_price_delta} (+${curr_price_delta_percent}%)</b>`;
+      title_stock_change.classList.remove('stock_ticker_red');
       title_stock_change.classList.add('stock_ticker_green');
     } else {
       title_stock_change.innerHTML = `<b>${curr_price_delta} (${curr_price_delta_percent}%)</b>`;
+      title_stock_change.classList.remove('stock_ticker_green');
       title_stock_change.classList.add('stock_ticker_red');
     }
-
-    title.classList.add('title');
-    title_stock_change.classList.add('stock_ticker_change');
 
     return curr_price;
   }
