@@ -117,7 +117,7 @@ async function init () {
       title_stock_change.innerHTML = `<b>+${curr_price_delta} (+${curr_price_delta_percent}%)</b>`;
       title_stock_change.classList.add('stock_ticker_green');
     } else {
-      title_stock_change.innerHTML = `<b>-${curr_price_delta} (-${curr_price_delta_percent}%)</b>`;
+      title_stock_change.innerHTML = `<b>${curr_price_delta} (${curr_price_delta_percent}%)</b>`;
       title_stock_change.classList.add('stock_ticker_red');
     }
 
