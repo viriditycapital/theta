@@ -319,6 +319,39 @@ async function init () {
       puts_strike.set(puts[i].strike, puts[i]);
     }
 
+    /** Implied move **/
+    // We calculate this as the straddle (ATM Call + Put) * 0.85
+    // We have to manually calculate the closest strike
+    let atm_strike = -1;
+    for (const [key, value] of puts_strike.entries()) {
+      if (
+        (atm_strike < 0) || 
+        (Math.abs(curr_price - key) < Math.abs(curr_price - atm_strike))
+      ) {
+        atm_strike = key;
+      }
+    }
+
+    let put_mid = (puts_strike.get(atm_strike).ask + puts_strike.get(atm_strike).bid) / 2;
+    let call_mid = (calls_strike.get(atm_strike).ask + calls_strike.get(atm_strike).bid) / 2;
+    let straddle = 0.85 * (put_mid + call_mid);
+    let move_percentage = (straddle/curr_price);
+
+    let implied_move_bottom = curr_price*(1-move_percentage);
+    let implied_move_top = curr_price*(1+move_percentage);
+    implied_move.innerHTML = 
+    `
+    <b>Implied move for ${ticker} until ${(new Date(1000*puts[0].expiration)).toDateString()}</b>
+    ${(100*move_percentage).toFixed(2)}%
+    <br>
+    At current price of $${curr_price}, this means a target of 
+    $${(implied_move_bottom).toFixed(2)} or
+    $${(implied_move_top).toFixed(2)}.
+    <br>
+    This is marked on the table by two black lines.
+    `;
+
+    /** Create table of options **/
     // TODO: unsure if diff_days is accurate, accounting for current trading day
     const one_day = (24 * 60 * 60 * 1000); // hours*minutes*seconds*milliseconds
     const diff_days = Math.ceil(Math.abs((new Date()) - (new Date(1000*puts[0]['expiration']))) / one_day);
@@ -327,6 +360,8 @@ async function init () {
     let vol_d_total = vol_res_d['2w'].vol_ewma[vol_res_d['2w'].vol_ewma.length - 1]*diff_days/100;
     // TODO: Unsure if it is valid to just take 1w vol and divide by 5 for daily...
     let vol_w_total = vol_res_w['3m'].vol_ewma[vol_res_w['3m'].vol_ewma.length - 1]*diff_days/(5*100);
+    let passed_bottom = false;
+    let passed_top = false;
     for (let i = 0; i < puts.length; i++) {
       if (
         puts[i]['strike'] > curr_price*(1 - 4*vol_d_total) &&
@@ -338,6 +373,28 @@ async function init () {
         let cop_w = 
             (100*(1 - cdf_normal(puts[i]['strike'], curr_price, vol_w_total*curr_price))).toFixed(2);
 
+
+        if (!passed_bottom && puts[i]['strike'] > implied_move_bottom) {
+          passed_bottom = true;
+          output_puts += 
+          `
+          <tr>
+          <td colspan="5" style="background-color: black">
+          </td>
+          </tr>
+          `;
+        }
+
+        if (!passed_top && puts[i]['strike'] > implied_move_top) {
+          passed_top = true;
+          output_puts += 
+          `
+          <tr>
+          <td colspan="5" style="background-color: black">
+          </td>
+          </tr>
+          `;
+        }
 
         output_puts +=
         `<tr>
@@ -382,35 +439,6 @@ async function init () {
     </table>
     `;
 
-    // Implied move
-    // We calculate this as the straddle (ATM Call + Put) * 0.85
-    // We have to manually calculate the closest strike
-    let atm_strike = -1;
-    for (const [key, value] of puts_strike.entries()) {
-      if (
-        (atm_strike < 0) || 
-        (Math.abs(curr_price - key) < Math.abs(curr_price - atm_strike))
-      ) {
-        atm_strike = key;
-      }
-    }
-
-    console.log(atm_strike);
-
-    let put_mid = (puts_strike.get(atm_strike).ask + puts_strike.get(atm_strike).bid) / 2;
-    let call_mid = (calls_strike.get(atm_strike).ask + calls_strike.get(atm_strike).bid) / 2;
-    let straddle = 0.85 * (put_mid + call_mid);
-    let move_percentage = (straddle/curr_price);
-
-    implied_move.innerHTML = 
-    `
-    <b>Implied move for ${ticker} until ${(new Date(1000*puts[0].expiration)).toDateString()}</b>
-    ${(100*move_percentage).toFixed(2)}%
-    <br>
-    At current price of $${curr_price}, this means a target of 
-    $${(curr_price*(1-move_percentage)).toFixed(2)} or
-    $${(curr_price*(1+move_percentage)).toFixed(2)} 
-    `;
   }
 
 }
