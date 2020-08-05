@@ -39,8 +39,11 @@ async function init () {
   let left_side = document.createElement('div');
   left_side.classList.add('left_side');
   let title = document.createElement('div');
+  title.classList.add('title');
   let title_stock_price = document.createElement('div');
+  title_stock_price.classList.add('stock_ticker_price');
   let title_stock_change = document.createElement('div');
+  title_stock_change.classList.add('stock_ticker_change');
   let search_bar = document.createElement('div');
   search_bar.classList.add('search_bar');
   let ticker_input = document.createElement('input');
@@ -74,8 +77,7 @@ async function init () {
       document.body.classList.remove('search_active');
 
       // Get new quotes
-      let search_ticker = ticker_input.value;
-      main(search_ticker);
+      main(ticker_input.value);
     }
   });
 
@@ -94,37 +96,48 @@ async function init () {
     PLOT_LIB.remove_plot('chart_price');
     PLOT_LIB.remove_plot('chart_vol');
     let curr_price = await get_current_quote(ticker);
-    get_historical_quotes(ticker, curr_price);
+
+    if (curr_price >= 0) {
+      get_historical_quotes(ticker, curr_price);
+    }
   }
 
   /** GATHER DATA AND PERFORM ANALYSIS **/
   async function get_current_quote (ticker) {
     title_stock_price.innerHTML = 'getting quotes...';
     /* Current snapshot of stock */
-    let curr_price_response = await YF.quote({
-      symbol: ticker
-    });
-    title_stock_price.innerHTML = '';
-
-    let curr_price = curr_price_response['price']['regularMarketPrice'];
-    let curr_price_delta = (curr_price_response['price']['regularMarketChange']).toFixed(2);
-    let curr_price_delta_percent = (100*curr_price_response['price']['regularMarketChangePercent']).toFixed(2);
-
-    title_stock_price.innerHTML = `${ticker} $${(curr_price).toFixed(2)}`;
-    title_stock_price.classList.add('stock_ticker_price');
-
-    if (curr_price_delta >= 0) {
-      title_stock_change.innerHTML = `<b>+${curr_price_delta} (+${curr_price_delta_percent}%)</b>`;
-      title_stock_change.classList.add('stock_ticker_green');
-    } else {
-      title_stock_change.innerHTML = `<b>-${curr_price_delta} (-${curr_price_delta_percent}%)</b>`;
-      title_stock_change.classList.add('stock_ticker_red');
+    let curr_price_response;
+    try {
+      curr_price_response = await YF.quote({
+        symbol: ticker
+      });
+    } catch (err) {
+      title_stock_price.innerHTML = 'invalid ticker';
+      return -1;
     }
 
-    title.classList.add('title');
-    title_stock_change.classList.add('stock_ticker_change');
+    try {
+      let curr_price = curr_price_response['price']['regularMarketPrice'];
+      let curr_price_delta = (curr_price_response['price']['regularMarketChange']).toFixed(2);
+      let curr_price_delta_percent = (100*curr_price_response['price']['regularMarketChangePercent']).toFixed(2);
 
-    return curr_price;
+      title_stock_price.innerHTML = `${ticker} $${(curr_price).toFixed(2)}`;
+
+      if (curr_price_delta >= 0) {
+        title_stock_change.innerHTML = `<b>+${curr_price_delta} (+${curr_price_delta_percent}%)</b>`;
+        title_stock_change.classList.remove('stock_ticker_red');
+        title_stock_change.classList.add('stock_ticker_green');
+      } else {
+        title_stock_change.innerHTML = `<b>${curr_price_delta} (${curr_price_delta_percent}%)</b>`;
+        title_stock_change.classList.remove('stock_ticker_green');
+        title_stock_change.classList.add('stock_ticker_red');
+      }
+
+      return curr_price;
+    } catch (err) {
+      title_stock_price.innerHTML = 'invalid ticker';
+      return -1;
+    }
   }
 
   async function get_historical_quotes (ticker, curr_price) {
@@ -180,9 +193,6 @@ async function init () {
       '6m' : vol_AVG(prices_w.slice(0, 24)),
       '1y' : vol_AVG(prices_w)
     };
-
-    console.log(quotes_w);
-    console.log(prices_w);
 
     // Plot volatility
     // Notice that we have one less data point since we don't 
@@ -318,29 +328,115 @@ async function init () {
       puts_strike.set(puts[i].strike, puts[i]);
     }
 
+    /** Implied move **/
+    // We calculate this as the straddle (ATM Call + Put) * 0.85
+    // We have to manually calculate the closest strike
+    let atm_strike = -1;
+    for (const [key, value] of puts_strike.entries()) {
+      if (
+        (atm_strike < 0) || 
+        (Math.abs(curr_price - key) < Math.abs(curr_price - atm_strike))
+      ) {
+        atm_strike = key;
+      }
+    }
+
+    let put_mid = (puts_strike.get(atm_strike).ask + puts_strike.get(atm_strike).bid) / 2;
+    let call_mid = (calls_strike.get(atm_strike).ask + calls_strike.get(atm_strike).bid) / 2;
+    let straddle = 0.85 * (put_mid + call_mid);
+    let move_percentage = (straddle/curr_price);
+
+    let implied_move_bottom = curr_price*(1-move_percentage);
+    let implied_move_top = curr_price*(1+move_percentage);
+
+    /** IV Chance of Profit **/
     // TODO: unsure if diff_days is accurate, accounting for current trading day
     const one_day = (24 * 60 * 60 * 1000); // hours*minutes*seconds*milliseconds
     const diff_days = Math.ceil(Math.abs((new Date()) - (new Date(1000*puts[0]['expiration']))) / one_day);
+    let implied_volatility = puts_strike.get(atm_strike).impliedVolatility;
+    let iv_movement_until_exp = implied_volatility*Math.sqrt(diff_days/365);
+    let iv_delta = iv_movement_until_exp * curr_price;
+
+    implied_move.innerHTML = 
+    `
+    <p>
+    <b>Implied move for ${ticker} until ${(new Date(1000*puts[0].expiration)).toDateString()}</b>
+    ${(100*move_percentage).toFixed(2)}%
+    <br>
+    At current price of $${curr_price}, this means a target of 
+    $${(implied_move_bottom).toFixed(2)} or
+    $${(implied_move_top).toFixed(2)}.
+    <br>
+    This is marked on the table by two black lines.
+    </p>
+    <p>
+    If we take a look at the IV of options, we can calculate an implied move of ${(100*iv_movement_until_exp).toFixed(2)}%
+    of 1 standard deviation. We use this to calculate our chance of profit with IV.
+    </p>
+    `;
+
+    /** Create table of options **/
 
     let output_puts = '';
     let vol_d_total = vol_res_d['2w'].vol_ewma[vol_res_d['2w'].vol_ewma.length - 1]*diff_days/100;
-    // TODO: Unsure if it is valid to just take 1w vol and divide by 5 for daily...
-    let vol_w_total = vol_res_w['3m'].vol_ewma[vol_res_w['3m'].vol_ewma.length - 1]*diff_days/(5*100);
+    // Based on Gaussian, we'll multiply by \sqrt{t}/\sqrt{total_time}
+    let vol_w_total = vol_res_w['3m'].vol_ewma[vol_res_w['3m'].vol_ewma.length - 1]*Math.sqrt(diff_days/5)/(100);
+    let passed_bottom = false;
+    let passed_top = false;
+
+    let NUM_TABLE_COLS = 6;
+    console.log('NUM PUTS', puts.length)
     for (let i = 0; i < puts.length; i++) {
       if (
-        puts[i]['strike'] > curr_price*(1 - 4*vol_d_total) &&
-        puts[i]['strike'] < curr_price*(1 + 4*vol_d_total)
+        (puts.length < CONST.MAX_OPTIONS) ||
+        (puts[i]['strike'] > curr_price*(1 - 4*vol_d_total) &&
+        puts[i]['strike'] < curr_price*(1 + 4*vol_d_total))
       ) {
+        let break_even_price = puts[i]['strike'] - (puts[i]['ask'] + puts[i]['bid'])/2;
+        iv_movement_until_exp = puts[i]['impliedVolatility']*Math.sqrt(diff_days/365);
+        iv_delta = iv_movement_until_exp * curr_price;
+
         // RHS tail, since we want it to be above the strike for profit
         let cop_d = 
-            (100*(1 - cdf_normal(puts[i]['strike'], curr_price, vol_d_total*curr_price))).toFixed(2);
+            (100*(1 - cdf_normal(break_even_price, curr_price, vol_d_total*curr_price))).toFixed(2);
         let cop_w = 
-            (100*(1 - cdf_normal(puts[i]['strike'], curr_price, vol_w_total*curr_price))).toFixed(2);
+            (100*(1 - cdf_normal(break_even_price, curr_price, vol_w_total*curr_price))).toFixed(2);
+        let cop_iv = 
+            (100*(1 - cdf_normal(break_even_price, curr_price, iv_delta))).toFixed(2);
 
+        // This code places the boundaries for the implied movement 
+        if (!passed_bottom && puts[i]['strike'] > implied_move_bottom) {
+          passed_bottom = true;
+          output_puts += 
+          `
+          <tr>
+          <td colspan="${NUM_TABLE_COLS}" style="background-color: black">
+          </td>
+          </tr>
+          `;
+        }
 
+        if (!passed_top && puts[i]['strike'] > implied_move_top) {
+          passed_top = true;
+          output_puts += 
+          `
+          <tr>
+          <td colspan="${NUM_TABLE_COLS}" style="background-color: black">
+          </td>
+          </tr>
+          `;
+        }
+
+        let curr_cell_color = 'white';
+
+        if (puts[i]['strike'] == atm_strike) {
+          curr_cell_color = '#add8e6';
+        }
+
+        // Adds the current entry
         output_puts +=
         `<tr>
-          <td>
+          <td style="background-color: ${curr_cell_color}">
           ${Number(puts[i]['strike']).toFixed(2)}
           </td>
           <td>
@@ -354,6 +450,9 @@ async function init () {
           </td>
           <td style="background-color:${SUCCESS_GRADIENT(cop_w)}">
           ${cop_w}%
+          </td>
+          <td style="background-color:${SUCCESS_GRADIENT(cop_iv)}">
+          ${cop_iv}%
           </td>
         </tr>
         `;
@@ -369,6 +468,7 @@ async function init () {
       <th>IV</th>
       <th>COP_d</th>
       <th>COP_w</th>
+      <th>COP_IV</th>
     </tr>
     ${output_puts}
     </table>
@@ -381,40 +481,11 @@ async function init () {
     </table>
     `;
 
-    // Implied move
-    // We calculate this as the straddle (ATM Call + Put) * 0.85
-    // We have to manually calculate the closest strike
-    let atm_strike = -1;
-    for (const [key, value] of puts_strike.entries()) {
-      if (
-        (atm_strike < 0) || 
-        (Math.abs(curr_price - key) < Math.abs(curr_price - atm_strike))
-      ) {
-        atm_strike = key;
-      }
-    }
-
-    console.log(atm_strike);
-
-    let put_mid = (puts_strike.get(atm_strike).ask + puts_strike.get(atm_strike).bid) / 2;
-    let call_mid = (calls_strike.get(atm_strike).ask + calls_strike.get(atm_strike).bid) / 2;
-    let straddle = 0.85 * (put_mid + call_mid);
-    let move_percentage = (straddle/curr_price);
-
-    implied_move.innerHTML = 
-    `
-    <b>Implied move for ${ticker} until ${(new Date(1000*puts[0].expiration)).toDateString()}</b>
-    ${(100*move_percentage).toFixed(2)}%
-    <br>
-    At current price of $${curr_price}, this means a target of 
-    $${(curr_price*(1-move_percentage)).toFixed(2)} or
-    $${(curr_price*(1+move_percentage)).toFixed(2)} 
-    `;
+    // Tell MathJax to typeset our equations
+    // eslint-disable-next-line no-undef
+    MathJax.typeset();
   }
 
 }
 
 init();
-// Tell MathJax to typeset our equations
-// eslint-disable-next-line no-undef
-MathJax.typeset();

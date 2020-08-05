@@ -7,3 +7,6 @@ export const PROXY_URL = 'https://cors-anywhere.herokuapp.com/';
 
 // BYND is elite
 export const DEFAULT_TICKER = 'BYND';
+
+// Maximum number of options to display
+export const MAX_OPTIONS = 20;
