@@ -8,10 +8,10 @@ import * as CONST_STYLE from '../CONST_STYLE.js';
 /**
  * Plots data
  *
- * @param { String } chart_id The name of the chart svg to add the plot on
+ * @param { string } chart_id The name of the chart svg to add the plot on
  * @param { data[] } data
- * @param { String } data_x x field of data
- * @param { String } data_y y field of data
+ * @param { string } data_x x field of data
+ * @param { string } data_y y field of data
  * @param { top, right, bottom, left } margin
  */
 export function plot_line (
@@ -145,7 +145,7 @@ export function add_legend(
 
 /**
  * Removes all parts of a chart, leaving the svg blank 
- * @param { String } chart_id 
+ * @param { string } chart_id 
  */
 export function remove_plot (chart_id) {
   d3.selectAll(`#${chart_id}> *`).remove();

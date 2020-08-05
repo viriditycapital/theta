@@ -2,7 +2,7 @@
  * Parameters used in the analysis library
  */
 
-import { interpolateRgbBasis } from "d3";
+import { interpolateRgbBasis } from 'd3';
 
 /** Lambda as defined by riskmetrics for EWMA */
 export const LAMBDA_EWMA = 0.94;

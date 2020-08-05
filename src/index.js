@@ -7,7 +7,7 @@ import * as CONST from './constants.js';
 import { cdf_normal } from './analysis/general.js';
 import { vol_AVG } from './analysis/vol.js';
 import * as CONST_STYLE from './CONST_STYLE.js';
-import * as PLOT_LIB from './plot/plot.js';
+import { Chart_d3 } from './plot/plot_d3.js';
 
 import * as YF from 'yahoo-finance';
 import { SUCCESS_GRADIENT } from './analysis/CONST_ANALYSIS';
@@ -89,12 +89,15 @@ async function init () {
     ticker_input.focus();
   };
 
+  // Initialize charts
+  let chart_price_obj = new Chart_d3 ('chart_price', {top: 20, right: 20, bottom: 50, left: 70});
+  let chart_vol_obj = new Chart_d3 ('chart_vol', {top: 20, right: 70, bottom: 50, left: 70});
+
   main(CONST.DEFAULT_TICKER);
 
   async function main (ticker) {
     ticker = ticker.toUpperCase();
-    PLOT_LIB.remove_plot('chart_price');
-    PLOT_LIB.remove_plot('chart_vol');
+
     let curr_price = await get_current_quote(ticker);
 
     if (curr_price >= 0) {
@@ -168,12 +171,7 @@ async function init () {
       period: 'w'
     });
 
-    PLOT_LIB.plot_line(
-      'chart_price', 
-      quotes_d,
-      'date',
-      'close'
-    );
+    chart_price_obj.plot_line('price', quotes_d, 'date', 'close');
 
     // Concern: when we do things like this we lose the date that is associated
     // with each price
@@ -209,32 +207,13 @@ async function init () {
       );
     }
 
-    let chart_vol_margin = {top: 20, right: 70, bottom: 50, left: 70};
-
     // Increase right margin for second plot since we are plotting two series
-    let chart_vol_svg = PLOT_LIB.plot_line(
-      'chart_vol',
-      data_vol,
-      'date',
-      'vol_ewma',
-      CONST_STYLE.BLUE_FB,
-      chart_vol_margin
-    );
+    chart_vol_obj.plot_line('vol', data_vol, 'date', 'vol_ewma', CONST_STYLE.BLUE_FB);
+    chart_vol_obj.plot_line('price', quotes_d, 'date', 'close', CONST_STYLE.GREEN_BYND, 1);
 
-    PLOT_LIB.plot_line_only(
-      chart_vol_svg,
-      quotes_d,
-      'date',
-      'close',
-      CONST_STYLE.GREEN_BYND,
-      chart_vol_margin
-    );
-
-    PLOT_LIB.add_legend(
-      chart_vol_svg,
+    chart_vol_obj.add_legend(
       ['Volatility', 'Price'],
-      [CONST_STYLE.BLUE_FB, CONST_STYLE.GREEN_BYND],
-      chart_vol_margin
+      [CONST_STYLE.BLUE_FB, CONST_STYLE.GREEN_BYND]
     );
 
     let output_vol = '';
@@ -332,7 +311,7 @@ async function init () {
     // We calculate this as the straddle (ATM Call + Put) * 0.85
     // We have to manually calculate the closest strike
     let atm_strike = -1;
-    for (const [key, value] of puts_strike.entries()) {
+    for (const key of puts_strike.keys()) {
       if (
         (atm_strike < 0) || 
         (Math.abs(curr_price - key) < Math.abs(curr_price - atm_strike))
@@ -385,7 +364,6 @@ async function init () {
     let passed_top = false;
 
     let NUM_TABLE_COLS = 6;
-    console.log('NUM PUTS', puts.length)
     for (let i = 0; i < puts.length; i++) {
       if (
         (puts.length < CONST.MAX_OPTIONS) ||
