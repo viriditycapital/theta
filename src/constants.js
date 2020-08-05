@@ -3,8 +3,8 @@
  */
 
 // Need a proxy to avoid CORS issues
-// export const PROXY_URL = 'https://cors-anywhere.herokuapp.com/';
-export const PROXY_URL = 'https://';
+export const PROXY_URL = 'https://cors-anywhere.herokuapp.com/';
+// export const PROXY_URL = 'https://';
 
 // BYND is elite
 export const DEFAULT_TICKER = 'BYND';
