@@ -76,7 +76,9 @@ export class Chart_d3 {
     this.svg.selectAll(`.${CONST_PLOT.X_AXIS_CLASS}`)
       .transition()
       .duration(transition_duration)
-      .call(this.x_axis)
+      .call(this.x_axis);
+
+    this.svg.selectAll(`.${CONST_PLOT.X_AXIS_CLASS}`)
       .selectAll('text')
       .attr('y', 0)
       .attr('x', 9)
