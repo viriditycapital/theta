@@ -61,8 +61,14 @@ async function init () {
   left_side.appendChild(terminal);
 
   // Main page
-  document.body.appendChild(left_side);
-  document.body.appendChild(right_side);
+  let body_wrapper = document.createElement('div');
+  body_wrapper.classList.add('body_wrapper');
+  let disclaimer = document.createElement('div');
+  disclaimer.innerHTML = 'This is not investment advice.';
+  body_wrapper.appendChild(left_side);
+  body_wrapper.appendChild(right_side);
+  document.body.appendChild(body_wrapper);
+  document.body.appendChild(disclaimer);
 
   // Search Bar
   ticker_input.addEventListener('keyup', (event) => {
