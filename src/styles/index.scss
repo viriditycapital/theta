@@ -18,6 +18,10 @@ body {
     display: flex;
     flex-direction: row;
   }
+
+  svg {
+    overflow: visible;
+  }
 }
 
 .left_side {
@@ -100,5 +104,38 @@ table, th, td {
 
   &.search_active {
     display: block;
+  }
+}
+
+/**
+ * Timescales
+ */
+.timescale_wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  height: 50px;
+
+  .timescale {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    .timescale_button {
+      height: 40px;
+      width: 40px;
+      margin: 4px;
+      cursor: pointer;
+
+      background-color: $viridity_ultra_light;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
   }
 }

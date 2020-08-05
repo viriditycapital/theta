@@ -20,6 +20,8 @@ async function init () {
   // Right side
   let right_side = document.createElement('div');
   let right_title = document.createElement('div');
+  let timescale_filler = document.createElement('div');
+  timescale_filler.classList.add('timescale_wrapper');
   let vol_analysis = document.createElement('div');
   let chart_vol = document.createElement('div');
   chart_vol.id = 'chart_vol';
@@ -31,6 +33,7 @@ async function init () {
 
   right_title.innerHTML = 'Analysis';
   right_side.appendChild(right_title);
+  right_side.appendChild(timescale_filler);
   right_side.appendChild(chart_vol);
   right_side.appendChild(vol_analysis);
   right_side.appendChild(implied_move);
@@ -48,6 +51,12 @@ async function init () {
   search_bar.classList.add('search_bar');
   let ticker_input = document.createElement('input');
 
+  let timescale_wrapper = document.createElement('div');
+  timescale_wrapper.classList.add('timescale_wrapper');
+  let timescale = document.createElement('div');
+  timescale.classList.add('timescale');
+  timescale_wrapper.appendChild(timescale);
+
   let chart_price = document.createElement('div');
   chart_price.id = 'chart_price';
   let terminal = document.createElement('div');
@@ -57,6 +66,7 @@ async function init () {
   title.appendChild(title_stock_price);
   title.appendChild(title_stock_change);
   left_side.appendChild(title);
+  left_side.appendChild(timescale_wrapper);
   left_side.appendChild(chart_price);
   left_side.appendChild(terminal);
 
@@ -99,6 +109,11 @@ async function init () {
   let chart_price_obj = new Chart_d3 ('chart_price', {top: 20, right: 20, bottom: 50, left: 70});
   let chart_vol_obj = new Chart_d3 ('chart_vol', {top: 20, right: 70, bottom: 50, left: 70});
 
+  // Global data
+  let quotes_d;
+  let quotes_w;
+  let data_vol;
+
   main(CONST.DEFAULT_TICKER);
 
   async function main (ticker) {
@@ -106,9 +121,14 @@ async function init () {
 
     let curr_price = await get_current_quote(ticker);
 
+    // If there is an error, stop
     if (curr_price >= 0) {
       get_historical_quotes(ticker, curr_price);
     }
+
+    // Tell MathJax to typeset our equations
+    // eslint-disable-next-line no-undef
+    MathJax.typeset();
   }
 
   /** GATHER DATA AND PERFORM ANALYSIS **/
@@ -159,7 +179,7 @@ async function init () {
     curr_date.setFullYear(curr_date.getFullYear() - 1);
     let past_date_string = YAHOO_DATE(curr_date);
 
-    let quotes_d = await YF.historical({
+    quotes_d = await YF.historical({
       symbol: ticker,
       from: past_date_string,
       to: curr_date_string,
@@ -170,14 +190,14 @@ async function init () {
     let prev_monday = new Date();
     prev_monday.setDate(prev_monday.getDate() - 1 - (prev_monday.getDay() + 6) % 7);
 
-    let quotes_w = await YF.historical({
+    quotes_w = await YF.historical({
       symbol: ticker,
       from: past_date_string,
       to: YAHOO_DATE(prev_monday),
       period: 'w'
     });
 
-    chart_price_obj.plot_line('price', quotes_d, 'date', 'close');
+    chart_price_obj.plot_line('price', quotes_d, 'date', 'close', true);
 
     // Concern: when we do things like this we lose the date that is associated
     // with each price
@@ -201,7 +221,7 @@ async function init () {
     // Plot volatility
     // Notice that we have one less data point since we don't 
     // have the volatility for the first day
-    let data_vol = [];
+    data_vol = [];
 
     for (let i = 1; i < quotes_d.length; i++) {
       data_vol.push(
@@ -214,8 +234,8 @@ async function init () {
     }
 
     // Increase right margin for second plot since we are plotting two series
-    chart_vol_obj.plot_line('vol', data_vol, 'date', 'vol_ewma', CONST_STYLE.BLUE_FB);
-    chart_vol_obj.plot_line('price', quotes_d, 'date', 'close', CONST_STYLE.GREEN_BYND, 1);
+    chart_vol_obj.plot_line('price', quotes_d, 'date', 'close', false, CONST_STYLE.GREEN_BYND, 1);
+    chart_vol_obj.plot_line('vol', data_vol, 'date', 'vol_ewma', true, CONST_STYLE.BLUE_FB);
 
     chart_vol_obj.add_legend(
       ['Volatility', 'Price'],
@@ -464,10 +484,33 @@ async function init () {
     ${output_vol}
     </table>
     `;
+  }
 
-    // Tell MathJax to typeset our equations
-    // eslint-disable-next-line no-undef
-    MathJax.typeset();
+  /** TIMESCALE **/
+  for (let i = 0; i < CONST.GRANULARITY_KEYS.length; i++) {
+    let curr_time = document.createElement('div');
+    curr_time.classList.add('timescale_button');
+    curr_time.innerHTML = CONST.GRANULARITY_KEYS[i];
+
+    curr_time.onclick = () => plot_historical(CONST.GRANULARITY_KEYS[i]);
+
+    timescale.appendChild(curr_time);
+  }
+
+  /**
+   * 
+   * @param { string } granularity Should be 1y, 6m, 3m, 1m, 2w
+   */
+  function plot_historical (granularity) {
+    if (granularity != '1y') {
+      chart_price_obj.plot_line('price', quotes_d.slice(0, CONST.GRANULARITY[granularity]), 'date', 'close', true);
+      chart_vol_obj.plot_line('price', quotes_d.slice(0, CONST.GRANULARITY[granularity]), 'date', 'close', false, CONST_STYLE.GREEN_BYND, 1);
+      chart_vol_obj.plot_line('vol', data_vol.slice(0, CONST.GRANULARITY[granularity]), 'date', 'vol_ewma', true, CONST_STYLE.BLUE_FB);
+    } else {
+      chart_price_obj.plot_line('price', quotes_d, 'date', 'close', true);
+      chart_vol_obj.plot_line('price', quotes_d, 'date', 'close', false, CONST_STYLE.GREEN_BYND, 1);
+      chart_vol_obj.plot_line('vol', data_vol, 'date', 'vol_ewma', true, CONST_STYLE.BLUE_FB);
+    }
   }
 
 }

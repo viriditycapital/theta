@@ -54,7 +54,8 @@ export class Chart_d3 {
   }
 
   /**
-   * 
+   * TODO: there is a bug here where the this.x/this.y is not line dependent, it is shared by everyone.
+   * I think each line Map entry should contain its own x and y domain
    * @param { float[] } data 
    * @param { string } data_x 
    * @param { string } data_y 
@@ -67,6 +68,7 @@ export class Chart_d3 {
     data,
     data_x,
     data_y,
+    cursor = false,
     color = CONST_STYLE.GREEN_BYND,
     stroke_width = CONST_PLOT.LINE_THICKNESS_THIN,
     transition_duration = CONST_PLOT.TRANSITION_DURATION
@@ -120,6 +122,56 @@ export class Chart_d3 {
           .y((d) => this.y(d[data_y]))
         )
         .attr('stroke', color);
+    }
+
+    // Add cursor 
+    if (cursor) {
+      // Create the circle that travels along the curve of chart
+      let focus = this.svg
+        .append('g')
+        .append('circle')
+        .style('fill', color)
+        .attr('r', stroke_width + 3)
+        .style('opacity', 1);
+
+      // Create the text that travels along the curve of chart
+      let focusText = this.svg
+        .append('g')
+        .append('text')
+        .style('opacity', 0)
+        .attr('text-anchor', 'left')
+        .attr('alignment-baseline', 'middle');
+
+      // Create a rect on top of the svg area: this rectangle recovers mouse position
+      this.svg
+        .append('rect')
+        .style('fill', 'none')
+        .style('pointer-events', 'all')
+        .attr('width', this.width)
+        .attr('height', this.height)
+        .on('mouseover', () => {
+          focus.style('opacity', 1);
+          focusText.style('opacity', 1);
+        })
+        .on('mousemove', () => {
+          let x0 = this.x.invert(d3.mouse(this.svg.node())[0]);
+          let bisect = d3.bisector((d, x) => x - d[data_x]).left;
+          let i = bisect(data, x0, 0, data.length - 1);
+          let sel_x = data[i][data_x];
+          let sel_y = data[i][data_y];
+
+          focus
+            .attr('cx', this.x(sel_x))
+            .attr('cy', this.y(sel_y));
+          focusText
+            .html(`${(sel_y).toFixed(2)}`)
+            .attr('x', this.x(sel_x)+15)
+            .attr('y', this.y(sel_y));
+        })
+        .on('mouseout', () => {
+          focus.style('opacity', 0);
+          focusText.style('opacity', 0);
+        });
     }
   }
   
