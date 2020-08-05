@@ -19,7 +19,7 @@ export function plot_line (
   data,
   data_x,
   data_y,
-  color = CONST_STYLE.BLUE_FB,
+  color = CONST_STYLE.GREEN_BYND,
   margin = {
     top: 20, 
     right: 20, 
