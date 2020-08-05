@@ -7,7 +7,7 @@
     "build": "webpack --config webpack.prod.js",
     "start": "webpack-dev-server --open --config webpack.dev.js",
     "deploy": "npm run build && gh-pages -d build",
-    "lint": "eslint --fix --ext .js ."
+    "lint": "eslint src/ --fix --ext .js ."
   },
   "repository": {
     "type": "git",
