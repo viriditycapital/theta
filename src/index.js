@@ -170,12 +170,25 @@ async function main (ticker) {
   try {
     // This response will return the most recent expiration,
     // but will also return the other available expirations
-    let options_response_raw = await $.ajax(
+    let promise1 = $.ajax(
       CONST.PROXY_URL + `query1.finance.yahoo.com/v7/finance/options/${ticker}`
     );
 
+    let curr_date = new Date();
+    curr_date.setFullYear(curr_date.getFullYear() - 1);
+
+    let promise2 = YF.historical({
+      symbol: ticker,
+      from: UTIL.YAHOO_DATE(curr_date),
+      to: UTIL.YAHOO_DATE(new Date()),
+      period: 'd'
+    });
+
+    const data = await Promise.all([promise1, promise2]);
+
     // Extract out layers
-    DATA.options_response = options_response_raw['optionChain']['result'][0];
+    DATA.options_response = data[0]['optionChain']['result'][0];
+    DATA.quotes_d = data[1];
   } catch (err) {
     console.log(err);
     return -1;
@@ -185,21 +198,6 @@ async function main (ticker) {
 
   /** Historical quotes */
   DOM.terminal.innerHTML = 'loading charts...';
-
-  try {
-    let curr_date = new Date();
-    curr_date.setFullYear(curr_date.getFullYear() - 1);
-
-    DATA.quotes_d = await YF.historical({
-      symbol: ticker,
-      from: UTIL.YAHOO_DATE(curr_date),
-      to: UTIL.YAHOO_DATE(new Date()),
-      period: 'd'
-    });
-  } catch (err) {
-    console.log(err);
-    return -1;
-  }
 
   DATA.vol_res = update_historical(DATA.quotes_d, DOM, CHARTS);
 
