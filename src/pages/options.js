@@ -92,14 +92,15 @@ export function update_options (options_response, vol_res, DOM) {
   This is marked on the table by two black lines.
   </p>
   <p>
-  If we take a look at the IV of options, we can calculate an implied move of ${(100*iv_movement_until_exp).toFixed(2)}%
-  of 1 standard deviation. We use this to calculate our chance of profit with IV.
+  If we take a look at the IV of options, we can calculate an implied move of
+  ${(100*iv_movement_until_exp).toFixed(2)}% of 1 standard deviation until
+  the expiration date. We use this to calculate our chance of profit with IV.
   </p>
   `;
 
   /** Create table of options **/
   let output_puts = '';
-  let vol_d_total = vol_res.vol_res_d['2w'].vol_ewma[vol_res.vol_res_d['2w'].vol_ewma.length - 1]*diff_days/100;
+  let vol_d_total = vol_res.vol_res_d['2w'].vol_ewma[vol_res.vol_res_d['2w'].vol_ewma.length - 1]*Math.sqrt(diff_days)/100;
   // Based on Gaussian, we'll multiply by \sqrt{t}/\sqrt{total_time}
   let vol_w_total = vol_res.vol_res_w['3m'].vol_ewma[vol_res.vol_res_w['3m'].vol_ewma.length - 1]*Math.sqrt(diff_days/5)/(100);
   let passed_bottom = false;
