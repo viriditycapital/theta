@@ -70,7 +70,8 @@ export function update_options (options_response, vol_res, DOM) {
   /** IV Chance of Profit **/
   // TODO: unsure if diff_days is accurate, accounting for current trading day
   const one_day = (24 * 60 * 60 * 1000); // hours*minutes*seconds*milliseconds
-  const diff_days = Math.ceil(Math.abs((new Date()) - (new Date(1000*puts[0]['expiration']))) / one_day);
+  // Yahoo finance is weird and returns an expiration date that is a bit off
+  const diff_days = Math.ceil(Math.abs((new Date()) - (new Date(1000*puts[0]['expiration'] + 3600000*12))) / one_day);
   let implied_volatility = puts_strike.get(atm_strike).impliedVolatility;
   let iv_movement_until_exp = implied_volatility*Math.sqrt(diff_days/365);
   let iv_delta = iv_movement_until_exp * curr_price;
