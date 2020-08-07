@@ -23,7 +23,7 @@ import * as YF from 'yahoo-finance';
 
 /*** STORE GLOBAL VARIABLES ***/
 // Global state variables
-// const STATE = {};
+const STATE = {};
 
 // Store reference to DOM here
 const DOM = {};
@@ -81,6 +81,11 @@ async function init () {
 
   DOM.chart_price = document.createElement('div');
   DOM.chart_price.id = 'chart_price';
+  DOM.options_chain_select_wrapper = document.createElement('div');
+  DOM.options_chain_select_wrapper.classList.add('options_chain_select_wrapper');
+  DOM.options_chain_select = document.createElement('select');
+  DOM.options_chain_select_label = document.createElement('span');
+  DOM.options_chain_select_label.innerHTML = 'Expiration: ';
   DOM.terminal = document.createElement('div');
 
   DOM.search_bar.appendChild(DOM.ticker_input);
@@ -90,6 +95,9 @@ async function init () {
   DOM.left_side.appendChild(DOM.title);
   DOM.left_side.appendChild(DOM.timescale_wrapper);
   DOM.left_side.appendChild(DOM.chart_price);
+  DOM.left_side.appendChild(DOM.options_chain_select_wrapper);
+  DOM.options_chain_select_wrapper.appendChild(DOM.options_chain_select_label);
+  DOM.options_chain_select_wrapper.appendChild(DOM.options_chain_select);
   DOM.left_side.appendChild(DOM.terminal);
 
   // Main page
@@ -189,6 +197,7 @@ async function main (ticker) {
     // Extract out layers
     DATA.options_response = data[0]['optionChain']['result'][0];
     DATA.quotes_d = data[1];
+    STATE.ticker = DATA.options_response['quote']['symbol'];
   } catch (err) {
     console.log(err);
     return -1;
@@ -197,15 +206,50 @@ async function main (ticker) {
   update_current_quote(DATA.options_response['quote'], DOM);
 
   /** Historical quotes */
-  DOM.terminal.innerHTML = 'loading charts...';
-
   DATA.vol_res = update_historical(DATA.quotes_d, DOM, CHARTS);
 
   update_options(DATA.options_response, DATA.vol_res, DOM);
 
+  // Set up options chain select
+  update_options_select(DATA.options_response, DOM);
+
   // Tell MathJax to typeset our equations
   // eslint-disable-next-line no-undef
   MathJax.typeset();
+}
+
+function update_options_select(options_response, DOM) {
+  let available_dates = options_response['expirationDates'].map(date => {
+    let new_date = new Date(date*1000);
+
+    // The Yahoo Finance API seems to return 19, 20 o'clock before the next day
+    new_date.setHours(new_date.getHours() + 12);
+
+    return new_date;
+  });
+
+  for (let i = 0; i < available_dates.length; i++) {
+    DOM.options_chain_select.innerHTML += 
+    `
+    <option value="${options_response['expirationDates'][i]}">
+    ${available_dates[i].toLocaleDateString('en-US')}
+    </option>
+    `;
+  }
+
+  DOM.options_chain_select.onchange = () => {
+    let new_date = DOM.options_chain_select.value;
+
+    $.ajax(
+      CONST.PROXY_URL + `query1.finance.yahoo.com/v7/finance/options/${STATE.ticker}?&date=${new_date}`
+    ).then(data => {
+      console.log(data);
+      DATA.options_response = data['optionChain']['result'][0];
+      update_options(DATA.options_response, DATA.vol_res, DOM);
+    }).catch(err => {
+      console.log('Error changing options chain', err);
+    });
+  };
 }
 
 /**

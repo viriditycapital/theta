@@ -144,3 +144,18 @@ table, th, td {
     }
   }
 }
+
+.options_chain_select_wrapper {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+
+  margin-top: 24px;
+
+  select {
+    width: 100px;
+
+    margin-left: 12px;
+  }
+}

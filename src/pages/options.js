@@ -75,10 +75,13 @@ export function update_options (options_response, vol_res, DOM) {
   let iv_movement_until_exp = implied_volatility*Math.sqrt(diff_days/365);
   let iv_delta = iv_movement_until_exp * curr_price;
 
+  let exp_date = new Date(1000*puts[0].expiration);
+  exp_date.setHours(exp_date.getHours() + 12);
+
   DOM.implied_move.innerHTML = 
   `
   <p>
-  <b>Implied move for ${ticker} until ${(new Date(1000*puts[0].expiration)).toDateString()}</b>
+  <b>Implied move for ${ticker} until ${exp_date.toDateString()}</b> is
   ${(100*move_percentage).toFixed(2)}%
   <br>
   At current price of $${curr_price}, this means a target of 
