@@ -22,6 +22,11 @@ body {
   svg {
     overflow: visible;
   }
+
+  .disclaimer {
+    margin-top: 24px;
+    margin-bottom: 24px;
+  }
 }
 
 .left_side {
@@ -137,5 +142,20 @@ table, th, td {
         text-decoration: underline;
       }
     }
+  }
+}
+
+.options_chain_select_wrapper {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+
+  margin-top: 24px;
+
+  select {
+    width: 100px;
+
+    margin-left: 12px;
   }
 }
