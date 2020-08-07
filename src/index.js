@@ -2,15 +2,37 @@
  * Main entrypoint of app
  */
 
+// Stylesheet
 import './styles/index.scss';
-import * as CONST from './constants.js';
-import { cdf_normal } from './analysis/general.js';
-import { vol_AVG } from './analysis/vol.js';
-import * as CONST_STYLE from './CONST_STYLE.js';
-import * as PLOT_LIB from './plot/plot.js';
 
+// Constants
+import * as CONST from './constants.js';
+import * as CONST_STYLE from './CONST_STYLE.js';
+
+// Utility
+import { Chart_d3 } from './plot/plot_d3.js';
+import * as UTIL from './util.js';
+
+// Webpage building functions
+import { update_current_quote } from './pages/quote.js';
+import { update_historical } from './pages/historical.js';
+import { update_options } from './pages/options.js';
+
+// For retrieving historical data
 import * as YF from 'yahoo-finance';
-import { SUCCESS_GRADIENT } from './analysis/CONST_ANALYSIS';
+
+/*** STORE GLOBAL VARIABLES ***/
+// Global state variables
+const STATE = {};
+
+// Store reference to DOM here
+const DOM = {};
+
+// Stores references to our d3 charts
+const CHARTS = {};
+
+// From our HTML requests
+const DATA = {};
 
 /**
  * Builds the website and starts up the app
@@ -18,474 +40,232 @@ import { SUCCESS_GRADIENT } from './analysis/CONST_ANALYSIS';
 async function init () {
   /** DOCUMENT LAYOUT* */
   // Right side
-  let right_side = document.createElement('div');
-  let right_title = document.createElement('div');
-  let vol_analysis = document.createElement('div');
-  let chart_vol = document.createElement('div');
-  chart_vol.id = 'chart_vol';
-  let implied_move = document.createElement('div');
-  implied_move.classList.add('implied_move');
+  DOM.right_side = document.createElement('div');
+  DOM.right_title = document.createElement('div');
+  DOM.timescale_filler = document.createElement('div');
+  DOM.timescale_filler.classList.add('timescale_wrapper');
+  DOM.vol_analysis = document.createElement('div');
+  DOM.chart_vol = document.createElement('div');
+  DOM.chart_vol.id = 'chart_vol';
+  DOM.implied_move = document.createElement('div');
+  DOM.implied_move.classList.add('implied_move');
 
-  right_side.classList.add('right_side');
-  right_title.classList.add('title');
+  DOM.right_side.classList.add('right_side');
+  DOM.right_title.classList.add('title');
 
-  right_title.innerHTML = 'Analysis';
-  right_side.appendChild(right_title);
-  right_side.appendChild(chart_vol);
-  right_side.appendChild(vol_analysis);
-  right_side.appendChild(implied_move);
+  DOM.right_title.innerHTML = 'Analysis';
+  DOM.right_side.appendChild(DOM.right_title);
+  DOM.right_side.appendChild(DOM.timescale_filler);
+  DOM.right_side.appendChild(DOM.chart_vol);
+  DOM.right_side.appendChild(DOM.vol_analysis);
+  DOM.right_side.appendChild(DOM.implied_move);
 
   // Left side
-  let left_side = document.createElement('div');
-  left_side.classList.add('left_side');
-  let title = document.createElement('div');
-  title.classList.add('title');
-  let title_stock_price = document.createElement('div');
-  title_stock_price.classList.add('stock_ticker_price');
-  let title_stock_change = document.createElement('div');
-  title_stock_change.classList.add('stock_ticker_change');
-  let search_bar = document.createElement('div');
-  search_bar.classList.add('search_bar');
-  let ticker_input = document.createElement('input');
+  DOM.left_side = document.createElement('div');
+  DOM.left_side.classList.add('left_side');
+  DOM.title = document.createElement('div');
+  DOM.title.classList.add('title');
+  DOM.title_stock_price = document.createElement('div');
+  DOM.title_stock_price.classList.add('stock_ticker_price');
+  DOM.title_stock_change = document.createElement('div');
+  DOM.title_stock_change.classList.add('stock_ticker_change');
+  DOM.search_bar = document.createElement('div');
+  DOM.search_bar.classList.add('search_bar');
+  DOM.ticker_input = document.createElement('input');
 
-  let chart_price = document.createElement('div');
-  chart_price.id = 'chart_price';
-  let terminal = document.createElement('div');
+  DOM.timescale_wrapper = document.createElement('div');
+  DOM.timescale_wrapper.classList.add('timescale_wrapper');
+  DOM.timescale = document.createElement('div');
+  DOM.timescale.classList.add('timescale');
+  DOM.timescale_wrapper.appendChild(DOM.timescale);
 
-  search_bar.appendChild(ticker_input);
-  title.appendChild(search_bar);
-  title.appendChild(title_stock_price);
-  title.appendChild(title_stock_change);
-  left_side.appendChild(title);
-  left_side.appendChild(chart_price);
-  left_side.appendChild(terminal);
+  DOM.chart_price = document.createElement('div');
+  DOM.chart_price.id = 'chart_price';
+  DOM.options_chain_select_wrapper = document.createElement('div');
+  DOM.options_chain_select_wrapper.classList.add('options_chain_select_wrapper');
+  DOM.options_chain_select = document.createElement('select');
+  DOM.options_chain_select_label = document.createElement('span');
+  DOM.options_chain_select_label.innerHTML = 'Expiration: ';
+  DOM.terminal = document.createElement('div');
+
+  DOM.search_bar.appendChild(DOM.ticker_input);
+  DOM.title.appendChild(DOM.search_bar);
+  DOM.title.appendChild(DOM.title_stock_price);
+  DOM.title.appendChild(DOM.title_stock_change);
+  DOM.left_side.appendChild(DOM.title);
+  DOM.left_side.appendChild(DOM.timescale_wrapper);
+  DOM.left_side.appendChild(DOM.chart_price);
+  DOM.left_side.appendChild(DOM.options_chain_select_wrapper);
+  DOM.options_chain_select_wrapper.appendChild(DOM.options_chain_select_label);
+  DOM.options_chain_select_wrapper.appendChild(DOM.options_chain_select);
+  DOM.left_side.appendChild(DOM.terminal);
 
   // Main page
-  document.body.appendChild(left_side);
-  document.body.appendChild(right_side);
+  DOM.body_wrapper = document.createElement('div');
+  DOM.body_wrapper.classList.add('body_wrapper');
+  DOM.disclaimer = document.createElement('div');
+  DOM.disclaimer.classList.add('disclaimer');
+  DOM.disclaimer.innerHTML = 'This is not investment advice.';
+  DOM.body_wrapper.appendChild(DOM.left_side);
+  DOM.body_wrapper.appendChild(DOM.right_side);
+  document.body.appendChild(DOM.body_wrapper);
+  document.body.appendChild(DOM.disclaimer);
 
   // Search Bar
-  ticker_input.addEventListener('keyup', (event) => {
+  DOM.ticker_input.addEventListener('keyup', (event) => {
     // Number 13 is the "Enter" key on the keyboard
     if (event.keyCode === 13) {
       // Cancel the default action, if needed
       event.preventDefault();
 
       // Reset visibility
-      title.classList.remove('search_active') ;
-      search_bar.classList.remove('search_active');
+      DOM.title.classList.remove('search_active') ;
+      DOM.search_bar.classList.remove('search_active');
       document.body.classList.remove('search_active');
 
       // Get new quotes
-      main(ticker_input.value);
+      main(DOM.ticker_input.value);
     }
   });
 
-  title_stock_price.onclick = () => {
-    search_bar.classList.add('search_active');
-    title.classList.add('search_active');
+  DOM.title_stock_price.onclick = () => {
+    DOM.search_bar.classList.add('search_active');
+    DOM.title.classList.add('search_active');
     document.body.classList.add('search_active');
 
-    ticker_input.focus();
+    DOM.ticker_input.focus();
   };
 
-  main(CONST.DEFAULT_TICKER);
+  // Initialize charts
+  CHARTS.price = new Chart_d3(
+    'chart_price', 
+    {top: 20, right: 20, bottom: 50, left: 70}
+  );
+  CHARTS.vol = new Chart_d3(
+    'chart_vol', 
+    {top: 20, right: 70, bottom: 50, left: 70}
+  );
 
-  async function main (ticker) {
-    ticker = ticker.toUpperCase();
-    PLOT_LIB.remove_plot('chart_price');
-    PLOT_LIB.remove_plot('chart_vol');
-    let curr_price = await get_current_quote(ticker);
+  /** TIMESCALE **/
+  for (let i = 0; i < CONST.GRANULARITY_KEYS.length; i++) {
+    let curr_time = document.createElement('div');
+    curr_time.classList.add('timescale_button');
+    curr_time.innerHTML = CONST.GRANULARITY_KEYS[i];
 
-    if (curr_price >= 0) {
-      get_historical_quotes(ticker, curr_price);
-    }
+    curr_time.onclick = () => plot_historical(CONST.GRANULARITY_KEYS[i]);
+
+    DOM.timescale.appendChild(curr_time);
   }
 
-  /** GATHER DATA AND PERFORM ANALYSIS **/
-  async function get_current_quote (ticker) {
-    title_stock_price.innerHTML = 'getting quotes...';
-    /* Current snapshot of stock */
-    let curr_price_response;
-    try {
-      curr_price_response = await YF.quote({
-        symbol: ticker
-      });
-    } catch (err) {
-      title_stock_price.innerHTML = 'invalid ticker';
-      return -1;
-    }
-
-    try {
-      let curr_price = curr_price_response['price']['regularMarketPrice'];
-      let curr_price_delta = (curr_price_response['price']['regularMarketChange']).toFixed(2);
-      let curr_price_delta_percent = (100*curr_price_response['price']['regularMarketChangePercent']).toFixed(2);
-
-      title_stock_price.innerHTML = `${ticker} $${(curr_price).toFixed(2)}`;
-
-      if (curr_price_delta >= 0) {
-        title_stock_change.innerHTML = `<b>+${curr_price_delta} (+${curr_price_delta_percent}%)</b>`;
-        title_stock_change.classList.remove('stock_ticker_red');
-        title_stock_change.classList.add('stock_ticker_green');
-      } else {
-        title_stock_change.innerHTML = `<b>${curr_price_delta} (${curr_price_delta_percent}%)</b>`;
-        title_stock_change.classList.remove('stock_ticker_green');
-        title_stock_change.classList.add('stock_ticker_red');
-      }
-
-      return curr_price;
-    } catch (err) {
-      title_stock_price.innerHTML = 'invalid ticker';
-      return -1;
-    }
+  // Kick off webpage building
+  if (main(CONST.DEFAULT_TICKER) < 0) {
+    console.log('main initialization error');
   }
+}
 
-  async function get_historical_quotes (ticker, curr_price) {
-    let YAHOO_DATE = (date) => `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`;
+/**
+  * Builds the entire webpage. 
+  *
+  * Makes requests for all the data needed
+  *
+  * @param { string } ticker 
+  */
+async function main (ticker) {
+  ticker = ticker.toUpperCase();
 
-    /** Historical quotes */
-    terminal.innerHTML = 'loading...';
-    let curr_date = new Date();
-    let curr_date_string = YAHOO_DATE(curr_date);
-    curr_date.setFullYear(curr_date.getFullYear() - 1);
-    let past_date_string = YAHOO_DATE(curr_date);
-
-    let quotes_d = await YF.historical({
-      symbol: ticker,
-      from: past_date_string,
-      to: curr_date_string,
-      period: 'd'
-    });
-
-    // If the current week is not complete, the weekly will return a null entry
-    let prev_monday = new Date();
-    prev_monday.setDate(prev_monday.getDate() - 1 - (prev_monday.getDay() + 6) % 7);
-
-    let quotes_w = await YF.historical({
-      symbol: ticker,
-      from: past_date_string,
-      to: YAHOO_DATE(prev_monday),
-      period: 'w'
-    });
-
-    PLOT_LIB.plot_line(
-      'chart_price', 
-      quotes_d,
-      'date',
-      'close'
-    );
-
-    // Concern: when we do things like this we lose the date that is associated
-    // with each price
-    let prices_d = quotes_d.map((e) => e.close);
-    let prices_w = quotes_w.map((e) => e.close);
-
-    let vol_res_d = {
-      '2w' : vol_AVG(prices_d.slice(0, 10)),
-      '1m' : vol_AVG(prices_d.slice(0, 20)),
-      '3m' : vol_AVG(prices_d.slice(0, 60)),
-      '6m' : vol_AVG(prices_d.slice(0, 120)),
-      '1y' : vol_AVG(prices_d)
-    };
-
-    let vol_res_w = {
-      '3m' : vol_AVG(prices_w.slice(0, 12)),
-      '6m' : vol_AVG(prices_w.slice(0, 24)),
-      '1y' : vol_AVG(prices_w)
-    };
-
-    // Plot volatility
-    // Notice that we have one less data point since we don't 
-    // have the volatility for the first day
-    let data_vol = [];
-
-    for (let i = 1; i < quotes_d.length; i++) {
-      data_vol.push(
-        {
-          date: quotes_d[i]['date'],
-          vol_sa: vol_res_d['1y']['vol_sa'][i-1],
-          vol_ewma: vol_res_d['1y']['vol_ewma'][i-1]
-        }
-      );
-    }
-
-    let chart_vol_margin = {top: 20, right: 70, bottom: 50, left: 70};
-
-    // Increase right margin for second plot since we are plotting two series
-    let chart_vol_svg = PLOT_LIB.plot_line(
-      'chart_vol',
-      data_vol,
-      'date',
-      'vol_ewma',
-      CONST_STYLE.BLUE_FB,
-      chart_vol_margin
-    );
-
-    PLOT_LIB.plot_line_only(
-      chart_vol_svg,
-      quotes_d,
-      'date',
-      'close',
-      CONST_STYLE.GREEN_BYND,
-      chart_vol_margin
-    );
-
-    PLOT_LIB.add_legend(
-      chart_vol_svg,
-      ['Volatility', 'Price'],
-      [CONST_STYLE.BLUE_FB, CONST_STYLE.GREEN_BYND],
-      chart_vol_margin
-    );
-
-    let output_vol = '';
-
-    // First do the weekly
-    output_vol += 
-    `
-    <th colspan="3">Granularity: 1w</th>
-    <tr>
-      <th>Sample timeline</th>
-      <th>SA</th>
-      <th>EWMA</th>
-    </tr>
-    `;
-    for (const [key, value] of Object.entries(vol_res_w)) {
-      output_vol +=
-      `<tr>
-        <td>
-        ${key}
-        </td>
-        <td>
-        ${(value.vol_sa[value.vol_sa.length-1]).toFixed(3)}%
-        </td>
-        <td>
-        ${(value.vol_ewma[value.vol_ewma.length-1]).toFixed(3)}%
-        </td>
-      </tr>
-      `;
-    }
-
-    // Do the daily volatility
-    output_vol += 
-    `
-    <th colspan="3">Granularity: 1d</th>
-    <tr>
-      <th>Sample timeline</th>
-      <th>SA</th>
-      <th>EWMA</th>
-    </tr>
-    `;
-    for (const [key, value] of Object.entries(vol_res_d)) {
-      output_vol +=
-      `<tr>
-        <td>
-        ${key}
-        </td>
-        <td>
-        ${(value.vol_sa[value.vol_sa.length-1]).toFixed(3)}%
-        </td>
-        <td>
-        ${(value.vol_ewma[value.vol_ewma.length-1]).toFixed(3)}%
-        </td>
-      </tr>
-      `;
-    }
-
-    /** Options quotes **/
-    let options = await $.ajax(
+  DOM.title_stock_price.innerHTML = `getting quotes for ${ticker}...`;
+  /** Current quote and options **/
+  try {
+    // This response will return the most recent expiration,
+    // but will also return the other available expirations
+    let promise1 = $.ajax(
       CONST.PROXY_URL + `query1.finance.yahoo.com/v7/finance/options/${ticker}`
     );
 
-    let calls = options['optionChain']['result'][0]['options'][0]['calls'];
-    let puts  = options['optionChain']['result'][0]['options'][0]['puts'];
-    /*
-    * Sample output:
-    *
-    * ask: 0.01
-    * bid: 0
-    * change: 0
-    * contractSize: "REGULAR"
-    * contractSymbol: "BYND200731P00065000"
-    * currency: "USD"
-    * expiration: 1596153600
-    * impliedVolatility: 3.93750015625
-    * inTheMoney: false
-    * lastPrice: 0.01
-    * lastTradeDate: 1595943521
-    * openInterest: 154
-    * percentChange: 0
-    * strike: 65
-    * volume: 2
-    */
+    let curr_date = new Date();
+    curr_date.setFullYear(curr_date.getFullYear() - 1);
 
-    // Sort calls and puts by indexing the strike price
-    let calls_strike = new Map();
-    for (let i = 0; i < calls.length; i++) {
-      calls_strike.set(calls[i].strike, calls[i]);
-    }
-    let puts_strike = new Map();
-    for (let i = 0; i < puts.length; i++) {
-      puts_strike.set(puts[i].strike, puts[i]);
-    }
+    let promise2 = YF.historical({
+      symbol: ticker,
+      from: UTIL.YAHOO_DATE(curr_date),
+      to: UTIL.YAHOO_DATE(new Date()),
+      period: 'd'
+    });
 
-    /** Implied move **/
-    // We calculate this as the straddle (ATM Call + Put) * 0.85
-    // We have to manually calculate the closest strike
-    let atm_strike = -1;
-    for (const [key, value] of puts_strike.entries()) {
-      if (
-        (atm_strike < 0) || 
-        (Math.abs(curr_price - key) < Math.abs(curr_price - atm_strike))
-      ) {
-        atm_strike = key;
-      }
-    }
+    const data = await Promise.all([promise1, promise2]);
 
-    let put_mid = (puts_strike.get(atm_strike).ask + puts_strike.get(atm_strike).bid) / 2;
-    let call_mid = (calls_strike.get(atm_strike).ask + calls_strike.get(atm_strike).bid) / 2;
-    let straddle = 0.85 * (put_mid + call_mid);
-    let move_percentage = (straddle/curr_price);
-
-    let implied_move_bottom = curr_price*(1-move_percentage);
-    let implied_move_top = curr_price*(1+move_percentage);
-
-    /** IV Chance of Profit **/
-    // TODO: unsure if diff_days is accurate, accounting for current trading day
-    const one_day = (24 * 60 * 60 * 1000); // hours*minutes*seconds*milliseconds
-    const diff_days = Math.ceil(Math.abs((new Date()) - (new Date(1000*puts[0]['expiration']))) / one_day);
-    let implied_volatility = puts_strike.get(atm_strike).impliedVolatility;
-    let iv_movement_until_exp = implied_volatility*Math.sqrt(diff_days/365);
-    let iv_delta = iv_movement_until_exp * curr_price;
-
-    implied_move.innerHTML = 
-    `
-    <p>
-    <b>Implied move for ${ticker} until ${(new Date(1000*puts[0].expiration)).toDateString()}</b>
-    ${(100*move_percentage).toFixed(2)}%
-    <br>
-    At current price of $${curr_price}, this means a target of 
-    $${(implied_move_bottom).toFixed(2)} or
-    $${(implied_move_top).toFixed(2)}.
-    <br>
-    This is marked on the table by two black lines.
-    </p>
-    <p>
-    If we take a look at the IV of options, we can calculate an implied move of ${(100*iv_movement_until_exp).toFixed(2)}%
-    of 1 standard deviation. We use this to calculate our chance of profit with IV.
-    </p>
-    `;
-
-    /** Create table of options **/
-
-    let output_puts = '';
-    let vol_d_total = vol_res_d['2w'].vol_ewma[vol_res_d['2w'].vol_ewma.length - 1]*diff_days/100;
-    // Based on Gaussian, we'll multiply by \sqrt{t}/\sqrt{total_time}
-    let vol_w_total = vol_res_w['3m'].vol_ewma[vol_res_w['3m'].vol_ewma.length - 1]*Math.sqrt(diff_days/5)/(100);
-    let passed_bottom = false;
-    let passed_top = false;
-
-    let NUM_TABLE_COLS = 6;
-    console.log('NUM PUTS', puts.length)
-    for (let i = 0; i < puts.length; i++) {
-      if (
-        (puts.length < CONST.MAX_OPTIONS) ||
-        (puts[i]['strike'] > curr_price*(1 - 4*vol_d_total) &&
-        puts[i]['strike'] < curr_price*(1 + 4*vol_d_total))
-      ) {
-        let break_even_price = puts[i]['strike'] - (puts[i]['ask'] + puts[i]['bid'])/2;
-        iv_movement_until_exp = puts[i]['impliedVolatility']*Math.sqrt(diff_days/365);
-        iv_delta = iv_movement_until_exp * curr_price;
-
-        // RHS tail, since we want it to be above the strike for profit
-        let cop_d = 
-            (100*(1 - cdf_normal(break_even_price, curr_price, vol_d_total*curr_price))).toFixed(2);
-        let cop_w = 
-            (100*(1 - cdf_normal(break_even_price, curr_price, vol_w_total*curr_price))).toFixed(2);
-        let cop_iv = 
-            (100*(1 - cdf_normal(break_even_price, curr_price, iv_delta))).toFixed(2);
-
-        // This code places the boundaries for the implied movement 
-        if (!passed_bottom && puts[i]['strike'] > implied_move_bottom) {
-          passed_bottom = true;
-          output_puts += 
-          `
-          <tr>
-          <td colspan="${NUM_TABLE_COLS}" style="background-color: black">
-          </td>
-          </tr>
-          `;
-        }
-
-        if (!passed_top && puts[i]['strike'] > implied_move_top) {
-          passed_top = true;
-          output_puts += 
-          `
-          <tr>
-          <td colspan="${NUM_TABLE_COLS}" style="background-color: black">
-          </td>
-          </tr>
-          `;
-        }
-
-        let curr_cell_color = 'white';
-
-        if (puts[i]['strike'] == atm_strike) {
-          curr_cell_color = '#add8e6';
-        }
-
-        // Adds the current entry
-        output_puts +=
-        `<tr>
-          <td style="background-color: ${curr_cell_color}">
-          ${Number(puts[i]['strike']).toFixed(2)}
-          </td>
-          <td>
-          ${Number(puts[i]['lastPrice']).toFixed(2)}
-          </td>
-          <td>
-          ${Number(100*puts[i]['impliedVolatility']).toFixed(2)}%
-          </td>
-          <td style="background-color:${SUCCESS_GRADIENT(cop_d)}">
-          ${cop_d}%
-          </td>
-          <td style="background-color:${SUCCESS_GRADIENT(cop_w)}">
-          ${cop_w}%
-          </td>
-          <td style="background-color:${SUCCESS_GRADIENT(cop_iv)}">
-          ${cop_iv}%
-          </td>
-        </tr>
-        `;
-      }
-    }
-
-    terminal.innerHTML = 
-    `
-    <table style="width:100%">
-    <tr>
-      <th>Strike</th>
-      <th>Last Price</th>
-      <th>IV</th>
-      <th>COP_d</th>
-      <th>COP_w</th>
-      <th>COP_IV</th>
-    </tr>
-    ${output_puts}
-    </table>
-    `;
-
-    vol_analysis.innerHTML = 
-    `
-    <table style="width:100%">
-    ${output_vol}
-    </table>
-    `;
-
-    // Tell MathJax to typeset our equations
-    // eslint-disable-next-line no-undef
-    MathJax.typeset();
+    // Extract out layers
+    DATA.options_response = data[0]['optionChain']['result'][0];
+    DATA.quotes_d = data[1];
+    STATE.ticker = DATA.options_response['quote']['symbol'];
+  } catch (err) {
+    console.log(err);
+    return -1;
   }
 
+  update_current_quote(DATA.options_response['quote'], DOM);
+
+  /** Historical quotes */
+  DATA.vol_res = update_historical(DATA.quotes_d, DOM, CHARTS);
+
+  update_options(DATA.options_response, DATA.vol_res, DOM);
+
+  // Set up options chain select
+  update_options_select(DATA.options_response, DOM);
+
+  // Tell MathJax to typeset our equations
+  // eslint-disable-next-line no-undef
+  MathJax.typeset();
+}
+
+function update_options_select(options_response, DOM) {
+  let available_dates = options_response['expirationDates'].map(date => {
+    let new_date = new Date(date*1000);
+
+    // The Yahoo Finance API seems to return 19, 20 o'clock before the next day
+    new_date.setHours(new_date.getHours() + 12);
+
+    return new_date;
+  });
+
+  for (let i = 0; i < available_dates.length; i++) {
+    DOM.options_chain_select.innerHTML += 
+    `
+    <option value="${options_response['expirationDates'][i]}">
+    ${available_dates[i].toLocaleDateString('en-US')}
+    </option>
+    `;
+  }
+
+  DOM.options_chain_select.onchange = () => {
+    let new_date = DOM.options_chain_select.value;
+
+    $.ajax(
+      CONST.PROXY_URL + `query1.finance.yahoo.com/v7/finance/options/${STATE.ticker}?&date=${new_date}`
+    ).then(data => {
+      console.log(data);
+      DATA.options_response = data['optionChain']['result'][0];
+      update_options(DATA.options_response, DATA.vol_res, DOM);
+    }).catch(err => {
+      console.log('Error changing options chain', err);
+    });
+  };
+}
+
+/**
+  * Used to plot historical quotes and volatility on the charts
+  * @param { string } granularity Should be 1y, 6m, 3m, 1m, 2w
+  */
+function plot_historical (granularity) {
+  if (granularity != '1y') {
+    CHARTS.price.plot_line('price', DATA.quotes_d.slice(0, CONST.GRANULARITY[granularity]), 'date', 'close', true);
+    CHARTS.vol.plot_line('price', DATA.quotes_d.slice(0, CONST.GRANULARITY[granularity]), 'date', 'close', false, CONST_STYLE.GREEN_BYND, 1);
+    CHARTS.vol.plot_line('vol', DATA.vol_res.data_vol.slice(0, CONST.GRANULARITY[granularity]), 'date', 'vol_ewma', true, CONST_STYLE.BLUE_FB);
+  } else {
+    CHARTS.price.plot_line('price', DATA.quotes_d, 'date', 'close', true);
+    CHARTS.vol.plot_line('price', DATA.quotes_d, 'date', 'close', false, CONST_STYLE.GREEN_BYND, 1);
+    CHARTS.vol.plot_line('vol', DATA.vol_res.data_vol, 'date', 'vol_ewma', true, CONST_STYLE.BLUE_FB);
+  }
 }
 
 init();

@@ -9,9 +9,24 @@ body {
   margin: 0;
 
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
+  align-items: center;
 
   font-family: sans-serif;
+
+  .body_wrapper {
+    display: flex;
+    flex-direction: row;
+  }
+
+  svg {
+    overflow: visible;
+  }
+
+  .disclaimer {
+    margin-top: 24px;
+    margin-bottom: 24px;
+  }
 }
 
 .left_side {
@@ -94,5 +109,53 @@ table, th, td {
 
   &.search_active {
     display: block;
+  }
+}
+
+/**
+ * Timescales
+ */
+.timescale_wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  height: 50px;
+
+  .timescale {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    .timescale_button {
+      height: 40px;
+      width: 40px;
+      margin: 4px;
+      cursor: pointer;
+
+      background-color: $viridity_ultra_light;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+}
+
+.options_chain_select_wrapper {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+
+  margin-top: 24px;
+
+  select {
+    width: 100px;
+
+    margin-left: 12px;
   }
 }
