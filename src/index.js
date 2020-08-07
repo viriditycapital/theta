@@ -123,8 +123,10 @@ async function init () {
       DOM.search_bar.classList.remove('search_active');
       document.body.classList.remove('search_active');
 
-      // Get new quotes
-      main(DOM.ticker_input.value);
+      if (DOM.ticker_input.value.toUpperCase() != STATE.ticker) {
+        // Get new quotes
+        main(DOM.ticker_input.value);
+      }
     }
   });
 
@@ -228,6 +230,7 @@ function update_options_select(options_response, DOM) {
     return new_date;
   });
 
+  DOM.options_chain_select.innerHTML = '';
   for (let i = 0; i < available_dates.length; i++) {
     DOM.options_chain_select.innerHTML += 
     `
