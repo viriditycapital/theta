@@ -246,7 +246,6 @@ function update_options_select(options_response, DOM) {
     $.ajax(
       CONST.PROXY_URL + `query1.finance.yahoo.com/v7/finance/options/${STATE.ticker}?&date=${new_date}`
     ).then(data => {
-      console.log(data);
       DATA.options_response = data['optionChain']['result'][0];
       update_options(DATA.options_response, DATA.vol_res, DOM);
     }).catch(err => {

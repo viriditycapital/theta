@@ -106,12 +106,25 @@ export function update_options (options_response, vol_res, DOM) {
   let passed_bottom = false;
   let passed_top = false;
 
+  // If the puts are all very much lower than at the money, then they will not show.
+  let puts_too_low = puts[puts.length - 1]['strike'] < curr_price;
+  let lower_bound = options_response['strikes'][Math.max(0, options_response['strikes'].indexOf(atm_strike) - 5)];
+  let upper_bound = options_response['strikes'][Math.min(options_response['strikes'].length - 1, options_response['strikes'].indexOf(atm_strike) + 5)];
+  let put_lower_bound = Math.min(lower_bound, curr_price*(1 - 3*iv_movement_until_exp));
+  let put_upper_bound = Math.max(upper_bound, curr_price*(1 + 3*iv_movement_until_exp));
+
   let NUM_TABLE_COLS = 6;
   for (let i = 0; i < puts.length; i++) {
+    // TODO: this logic is bad and complicated. It is meant to show the correct
+    // number of options given the scenario
     if (
+      // Not many options, show them all
       (puts.length < CONST.MAX_OPTIONS) ||
-      (puts[i]['strike'] > curr_price*(1 - 4*vol_d_total) &&
-      puts[i]['strike'] < curr_price*(1 + 4*vol_d_total))
+      // Strikes are significantly lower than the current price
+      (puts_too_low && i >= (puts.length - (CONST.MAX_OPTIONS/2) + 1)) ||
+      // Show strikes within our interest
+      (puts[i]['strike'] > put_lower_bound &&
+      puts[i]['strike'] < put_upper_bound) 
     ) {
       let break_even_price = puts[i]['strike'] - (puts[i]['ask'] + puts[i]['bid'])/2;
       iv_movement_until_exp = puts[i]['impliedVolatility']*Math.sqrt(diff_days/365);
