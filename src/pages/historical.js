@@ -20,7 +20,6 @@ import { vol_AVG } from '../analysis/vol.js';
  * e.g. skip through all the null entries.
  */
 export function update_historical (quotes_d, DOM, CHARTS) {
-  console.log('historical');
   // If the current week is not complete, the weekly will return a null entry
   CHARTS.price.plot_line('price', quotes_d, 'date', 'close', true);
 
@@ -46,8 +45,6 @@ export function update_historical (quotes_d, DOM, CHARTS) {
     '6m' : vol_AVG(prices_w.slice(0, 24)),
     '1y' : vol_AVG(prices_w)
   };
-
-  console.log(vol_res_w)
 
   // Plot volatility
   // Notice that we have one less data point since we don't 
